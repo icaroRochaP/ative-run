@@ -1,4 +1,5 @@
-import { getSupabaseClient, isSupabaseConfigured } from "./supabase"
+import { getSupabaseClient, isSupabaseConfigured, isSupabaseAdminConfigured } from "./supabase"
+import { createAdminClient } from "./supabase-admin"
 
 export type OnboardingQuestion = {
   id: string
@@ -181,12 +182,14 @@ export const getOnboardingQuestions = async (): Promise<OnboardingQuestion[]> =>
 }
 
 export const getUserResponses = async (userId: string) => {
-  if (!isSupabaseConfigured()) {
+  console.log("[ONBOARDING] getUserResponses chamado com userId:", userId)
+  if (!isSupabaseAdminConfigured()) {
+    console.error("[ONBOARDING] Supabase admin NÃO configurado!")
     return []
   }
-
   try {
-    const supabase = getSupabaseClient()
+    const supabase = createAdminClient()
+    console.log("[ONBOARDING] getUserResponses - admin client criado")
     const { data, error } = await supabase
       .from("onboarding_responses")
       .select(`
@@ -194,11 +197,31 @@ export const getUserResponses = async (userId: string) => {
         onboarding_questions (*)
       `)
       .eq("user_id", userId)
-
+    console.log("[ONBOARDING] getUserResponses - data:", data)
+    console.log("[ONBOARDING] getUserResponses - error:", error)
     if (error) throw error
     return data
   } catch (error) {
-    console.error("Error fetching user responses:", error)
+    console.error("[ONBOARDING] getUserResponses - erro catch:", error)
+    return []
+  }
+}
+
+export const getUserResponsesClient = async (userId: string) => {
+  try {
+    const res = await fetch("/api/get-user-responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    })
+    const result = await res.json()
+    if (result.error) {
+      console.error("[ONBOARDING] Erro na API get-user-responses:", result.error)
+      return []
+    }
+    return result.data || []
+  } catch (err) {
+    console.error("[ONBOARDING] Erro fetch getUserResponsesClient:", err)
     return []
   }
 }

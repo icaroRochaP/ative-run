@@ -65,3 +65,10 @@ export const isSupabaseConfigured = () => {
   console.log("🔧 Supabase configured:", configured)
   return configured
 }
+
+// Helper function to check if Supabase admin is configured
+export const isSupabaseAdminConfigured = () => {
+  const configured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  console.log("🔧 Supabase admin configured:", configured)
+  return configured
+}

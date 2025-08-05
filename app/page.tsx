@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation"
 import {
   getOnboardingQuestions,
   getUserResponses,
+  getUserResponsesClient,
   // Removed saveResponseAndUpdateProfile from here
   shouldShowQuestion,
   validateResponse,
@@ -50,7 +51,9 @@ const iconMap: Record<string, any> = {
   Camera,
 }
 
-export default function FitnessOnboarding() {
+export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?: string }) {
+  console.log("[ONBOARDING] userIdFromPath recebido:", userIdFromPath)
+
   const router = useRouter()
   const { user, isConfigured } = useAuth()
 
@@ -78,9 +81,15 @@ export default function FitnessOnboarding() {
     })
   }, [isConfigured, user])
 
+  const userId = userIdFromPath || (user ? user.id : undefined)
+
   useEffect(() => {
-    loadOnboardingData()
-  }, [user])
+    if (userId) {
+      loadOnboardingDataWithUserId(userId)
+    } else {
+      loadOnboardingData()
+    }
+  }, [userId, user])
 
   useEffect(() => {
     if (questions.length > 0) {
@@ -119,6 +128,36 @@ export default function FitnessOnboarding() {
     } finally {
       setLoading(false
       )
+    }
+  }
+
+  const loadOnboardingDataWithUserId = async (userId: string) => {
+    try {
+      console.log("[ONBOARDING] Iniciando loadOnboardingDataWithUserId para:", userId)
+      const questionsData = await getOnboardingQuestions()
+      console.log("[ONBOARDING] Perguntas carregadas:", questionsData.map(q => q.field_name))
+      setQuestions(questionsData)
+      const userResponses = await getUserResponsesClient(userId)
+      console.log("[ONBOARDING] Respostas do usuário:", userResponses)
+      const responsesMap: Record<string, any> = {}
+      userResponses.forEach((response: any) => {
+        const question = response.onboarding_questions
+        if (question) {
+          responsesMap[question.field_name] = response.response_array || response.response_value
+        }
+      })
+      console.log("[ONBOARDING] responsesMap gerado:", responsesMap)
+      setResponses(responsesMap)
+      setCurrentUser({ id: userId })
+      setUserCreated(true)
+      // Encontrar o próximo step não respondido
+      const nextStepIndex = questionsData.findIndex(q => !(q.field_name in responsesMap))
+      setCurrentStep(nextStepIndex === -1 ? questionsData.length : nextStepIndex)
+      setIsStarted(true) // inicia o onboarding automaticamente
+    } catch (error) {
+      console.error("Error loading onboarding data with userId:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
