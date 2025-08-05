@@ -80,6 +80,10 @@ export async function saveOnboardingResponses(
     const supabaseAdmin = createAdminClient()
     const responsesToSave = []
 
+    console.log("🔎 saveOnboardingResponses: userId:", userId)
+    console.log("🔎 saveOnboardingResponses: responses:", responses)
+    console.log("🔎 saveOnboardingResponses: questions:", questions)
+
     for (const question of questions) {
       const value = responses[question.field_name]
       if (value !== undefined && value !== null && (Array.isArray(value) || String(value).trim() !== "")) {
@@ -92,6 +96,7 @@ export async function saveOnboardingResponses(
         })
       }
     }
+    console.log("🔎 saveOnboardingResponses: responsesToSave:", responsesToSave)
 
     console.log("💾 Server Action: Saving all responses using admin client:", responsesToSave)
 

@@ -70,6 +70,15 @@ export default function FitnessOnboarding() {
   const [userCreated, setUserCreated] = useState(false)
 
   useEffect(() => {
+    console.log("🔎 FitnessOnboarding: isConfigured:", isConfigured)
+    console.log("🔎 FitnessOnboarding: user:", user)
+    getOnboardingQuestions().then((qs) => {
+      console.log("🔎 FitnessOnboarding: onboarding questions:", qs)
+      setQuestions(qs)
+    })
+  }, [isConfigured, user])
+
+  useEffect(() => {
     loadOnboardingData()
   }, [user])
 
@@ -108,7 +117,8 @@ export default function FitnessOnboarding() {
     } catch (error) {
       console.error("Error loading onboarding data:", error)
     } finally {
-      setLoading(false)
+      setLoading(false
+      )
     }
   }
 
@@ -175,13 +185,16 @@ export default function FitnessOnboarding() {
         }
 
         const userData = await signUpAndCreateProfile(emailValue, responses)
-        if (userData.user) {
-          setCurrentUser(userData.user)
+        const createdUser = userData?.data?.user
+        if (createdUser) {
+          setCurrentUser(createdUser)
           setUserCreated(true)
-          console.log("✅ User created successfully via Server Action:", userData.user.id)
+          console.log("✅ User created successfully via Server Action:", createdUser.id)
 
-          await saveOnboardingResponses(userData.user.id, responses, questions)
+          await saveOnboardingResponses(createdUser.id, responses, questions)
           console.log("✅ All previous responses saved to Supabase via Server Action.")
+        } else {
+          console.error("❌ Error: User not created. userData:", userData)
         }
       } catch (error: any) {
         console.error("❌ Error creating user on NEXT click:", error)
@@ -522,7 +535,7 @@ export default function FitnessOnboarding() {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="bg-black h-2 rounded-full transition-all duration-300 ease-out"
+              className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
