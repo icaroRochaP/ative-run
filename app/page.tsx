@@ -535,7 +535,7 @@ export default function FitnessOnboarding() {
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
+              className="bg-black h-2 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
