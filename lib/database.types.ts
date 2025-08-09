@@ -4,45 +4,76 @@ export interface Database {
       users: {
         Row: {
           id: string
-          email: string
-          name: string
-          age: number | null
-          gender: string | null
-          weight: string | null
-          height: string | null
-          primary_goal: string | null
-          subscription_status: string
-          next_renewal: string | null
           created_at: string
-          updated_at: string
+          name: string | null
+          phone: string | null
+          nickname: string | null
         }
         Insert: {
           id?: string
-          email: string
-          name: string
-          age?: number | null
-          gender?: string | null
-          weight?: string | null
-          height?: string | null
-          primary_goal?: string | null
-          subscription_status?: string
-          next_renewal?: string | null
           created_at?: string
-          updated_at?: string
+          name?: string | null
+          phone?: string | null
+          nickname?: string | null
         }
         Update: {
           id?: string
-          email?: string
-          name?: string
-          age?: number | null
-          gender?: string | null
-          weight?: string | null
-          height?: string | null
-          primary_goal?: string | null
-          subscription_status?: string
-          next_renewal?: string | null
           created_at?: string
-          updated_at?: string
+          name?: string | null
+          phone?: string | null
+          nickname?: string | null
+        }
+      }
+      agents: {
+        Row: {
+          id: string
+          created_at: string
+          name: string | null
+          prompt: string | null
+          description: string | null
+          identifier: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          name?: string | null
+          prompt?: string | null
+          description?: string | null
+          identifier?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          name?: string | null
+          prompt?: string | null
+          description?: string | null
+          identifier?: string | null
+        }
+      }
+      leads: {
+        Row: {
+          id: string
+          created_at: string
+          name: string | null
+          phone: string | null
+          user_id: string | null
+          onboarding: boolean | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          name?: string | null
+          phone?: string | null
+          user_id?: string | null
+          onboarding?: boolean | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          name?: string | null
+          phone?: string | null
+          user_id?: string | null
+          onboarding?: boolean | null
         }
       }
       onboarding_questions: {
@@ -56,11 +87,11 @@ export interface Database {
           icon: string | null
           field_name: string
           placeholder: string | null
-          required: boolean
-          options: string[] | null
-          validation: Record<string, any> | null
-          conditional_logic: Record<string, any> | null
-          is_active: boolean
+          required: boolean | null
+          options: any | null
+          validation: any | null
+          conditional_logic: any | null
+          is_active: boolean | null
           created_at: string
           updated_at: string
         }
@@ -74,11 +105,11 @@ export interface Database {
           icon?: string | null
           field_name: string
           placeholder?: string | null
-          required?: boolean
-          options?: string[] | null
-          validation?: Record<string, any> | null
-          conditional_logic?: Record<string, any> | null
-          is_active?: boolean
+          required?: boolean | null
+          options?: any | null
+          validation?: any | null
+          conditional_logic?: any | null
+          is_active?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -92,11 +123,11 @@ export interface Database {
           icon?: string | null
           field_name?: string
           placeholder?: string | null
-          required?: boolean
-          options?: string[] | null
-          validation?: Record<string, any> | null
-          conditional_logic?: Record<string, any> | null
-          is_active?: boolean
+          required?: boolean | null
+          options?: any | null
+          validation?: any | null
+          conditional_logic?: any | null
+          is_active?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -130,71 +161,71 @@ export interface Database {
       weight_updates: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           weight: number
-          date: string
+          date: string | null
           change: number | null
-          has_photo: boolean
+          has_photo: boolean | null
           photo_url: string | null
-          created_at: string
+          created_at: string | null
         }
         Insert: {
           id?: string
-          user_id: string
+          user_id?: string | null
           weight: number
-          date?: string
+          date?: string | null
           change?: number | null
-          has_photo?: boolean
+          has_photo?: boolean | null
           photo_url?: string | null
-          created_at?: string
+          created_at?: string | null
         }
         Update: {
           id?: string
-          user_id?: string
+          user_id?: string | null
           weight?: number
-          date?: string
+          date?: string | null
           change?: number | null
-          has_photo?: boolean
+          has_photo?: boolean | null
           photo_url?: string | null
-          created_at?: string
+          created_at?: string | null
         }
       }
       workouts: {
         Row: {
           id: string
-          user_id: string
+          user_id: string | null
           title: string
           emoji: string | null
-          exercises: number
-          total_sets: number
+          exercises: number | null
+          total_sets: number | null
           duration: number | null
-          completed: boolean
-          workout_date: string
-          created_at: string
+          completed: boolean | null
+          workout_date: string | null
+          created_at: string | null
         }
         Insert: {
           id?: string
-          user_id: string
+          user_id?: string | null
           title: string
           emoji?: string | null
-          exercises?: number
-          total_sets?: number
+          exercises?: number | null
+          total_sets?: number | null
           duration?: number | null
-          completed?: boolean
-          workout_date?: string
-          created_at?: string
+          completed?: boolean | null
+          workout_date?: string | null
+          created_at?: string | null
         }
         Update: {
           id?: string
-          user_id?: string
+          user_id?: string | null
           title?: string
           emoji?: string | null
-          exercises?: number
-          total_sets?: number
+          exercises?: number | null
+          total_sets?: number | null
           duration?: number | null
-          completed?: boolean
-          workout_date?: string
-          created_at?: string
+          completed?: boolean | null
+          workout_date?: string | null
+          created_at?: string | null
         }
       }
       exercises: {

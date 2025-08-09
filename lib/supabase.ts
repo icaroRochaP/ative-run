@@ -60,9 +60,14 @@ export const getSupabaseClient = () => {
 }
 
 // Helper function to check if Supabase is configured
+let configLoggedOnce = false
 export const isSupabaseConfigured = () => {
   const configured = !!(supabaseUrl && supabaseAnonKey)
-  console.log("🔧 Supabase configured:", configured)
+  // Only log once per session
+  if (!configLoggedOnce) {
+    console.log("🔧 Supabase configured:", configured)
+    configLoggedOnce = true
+  }
   return configured
 }
 

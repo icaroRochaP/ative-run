@@ -364,3 +364,22 @@ export const validateResponse = (
 
   return { isValid: true }
 }
+
+export const getLeadByIdClient = async (leadId: string) => {
+  try {
+    const res = await fetch("/api/get-lead-by-id", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId }),
+    })
+    const result = await res.json()
+    if (result.error) {
+      console.error("[ONBOARDING] Erro na API get-lead-by-id:", result.error)
+      return null
+    }
+    return result.data || null
+  } catch (err) {
+    console.error("[ONBOARDING] Erro fetch getLeadByIdClient:", err)
+    return null
+  }
+}

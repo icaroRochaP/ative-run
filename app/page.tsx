@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +29,7 @@ import {
   getOnboardingQuestions,
   getUserResponses,
   getUserResponsesClient,
+  getLeadByIdClient, // Importar função para obter dados do lead
   // Removed saveResponseAndUpdateProfile from here
   shouldShowQuestion,
   validateResponse,
@@ -52,14 +53,22 @@ const iconMap: Record<string, any> = {
 }
 
 export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?: string }) {
-  console.log("[ONBOARDING] userIdFromPath recebido:", userIdFromPath)
+  // Only log once per render cycle to avoid spam
+  const renderRef = React.useRef(0)
+  renderRef.current++
+  
+  if (renderRef.current === 1) {
+    console.log("[ONBOARDING] userIdFromPath recebido:", userIdFromPath)
+    console.log("🚀 FitnessOnboarding component loaded")
+  }
 
   const router = useRouter()
   const { user, isConfigured } = useAuth()
 
-  console.log("🚀 FitnessOnboarding component loaded")
-  console.log("👤 User:", user ? "Logged in" : "Not logged in")
-  console.log("⚙️ Supabase configured:", isConfigured)
+  if (renderRef.current === 1) {
+    console.log("👤 User:", user ? "Logged in" : "Not logged in")
+    console.log("⚙️ Supabase configured:", isConfigured)
+  }
 
   const [currentStep, setCurrentStep] = useState(0)
   const [isStarted, setIsStarted] = useState(false)
@@ -71,29 +80,34 @@ export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?:
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [userCreated, setUserCreated] = useState(false)
+  const [questionsLoaded, setQuestionsLoaded] = useState(false)
 
   useEffect(() => {
-    console.log("🔎 FitnessOnboarding: isConfigured:", isConfigured)
-    console.log("🔎 FitnessOnboarding: user:", user)
-    getOnboardingQuestions().then((qs) => {
-      console.log("🔎 FitnessOnboarding: onboarding questions:", qs)
-      setQuestions(qs)
-    })
-  }, [isConfigured, user])
-
-  const userId = userIdFromPath || (user ? user.id : undefined)
-
-  useEffect(() => {
-    if (userId) {
-      loadOnboardingDataWithUserId(userId)
-    } else {
-      loadOnboardingData()
+    if (questionsLoaded) return // Prevent multiple loads
+    
+    console.log("🔎 Loading onboarding questions...")
+    
+    const loadInitialData = async () => {
+      try {
+        const qs = await getOnboardingQuestions()
+        console.log("[ONBOARDING] Perguntas carregadas:", qs)
+        setQuestions(qs)
+        setQuestionsLoaded(true)
+        setLoading(false)
+      } catch (error) {
+        console.error("Error loading questions:", error)
+        setLoading(false)
+      }
     }
-  }, [userId, user])
+    
+    loadInitialData()
+  }, [questionsLoaded])
 
   useEffect(() => {
     if (questions.length > 0) {
-      updateVisibleQuestions()
+      const visible = questions.filter((question) => shouldShowQuestion(question, responses))
+      console.log("[ONBOARDING] Perguntas visíveis:", visible)
+      setVisibleQuestions(visible)
     }
   }, [questions, responses])
 
@@ -156,6 +170,31 @@ export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?:
       setIsStarted(true) // inicia o onboarding automaticamente
     } catch (error) {
       console.error("Error loading onboarding data with userId:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Nova função para carregar dados do lead e pré-preencher respostas do onboarding
+  const loadOnboardingDataWithLeadId = async (leadId: string) => {
+    try {
+      console.log("[ONBOARDING] Iniciando loadOnboardingDataWithLeadId para:", leadId)
+      const leadData = await getLeadByIdClient(leadId)
+      console.log("[ONBOARDING] Dados do lead:", leadData)
+      const questionsData = await getOnboardingQuestions()
+      setQuestions(questionsData)
+      // Pré-preencher respostas com dados do lead
+      const responsesMap: Record<string, any> = {}
+      if (leadData) {
+        if (leadData.name) responsesMap["name"] = leadData.name
+        if (leadData.phone) responsesMap["phone"] = leadData.phone
+        // Adicione outros campos conforme necessário
+      }
+      setResponses(responsesMap)
+      setCurrentUser({ id: leadData?.user_id || leadId })
+      setUserCreated(false)
+    } catch (error) {
+      console.error("Error loading onboarding data with leadId:", error)
     } finally {
       setLoading(false)
     }
@@ -234,6 +273,9 @@ export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?:
           console.log("✅ All previous responses saved to Supabase via Server Action.")
         } else {
           console.error("❌ Error: User not created. userData:", userData)
+          if (userData?.error) {
+            console.error("❌ Supabase error:", userData.error)
+          }
         }
       } catch (error: any) {
         console.error("❌ Error creating user on NEXT click:", error)
@@ -280,11 +322,9 @@ export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?:
 
       if (userToComplete && isConfigured) {
         await completeOnboarding(userToComplete.id, {
-          age: responses.age ? Number.parseInt(responses.age) : null,
-          gender: responses.gender,
-          weight: responses.weight,
-          height: responses.height,
-          primary_goal: responses.primaryGoal,
+          name: responses.name,
+          phone: responses.phone,
+          nickname: responses.nickname,
         })
         console.log("✅ Onboarding completed for user:", userToComplete.id)
       } else if (!isConfigured) {
@@ -430,7 +470,7 @@ export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?:
           {question.question_type === "radio" && question.options && (
             <RadioGroup value={value || ""} onValueChange={(newValue) => updateResponse(question.field_name, newValue)}>
               <div className="space-y-3">
-                {question.options.map((option) => (
+                {(Array.isArray(question.options) ? question.options : []).map((option) => (
                   <div
                     key={option}
                     className={`flex items-center space-x-3 p-4 border-2 ${error ? "border-red-500" : "border-gray-200"} rounded-lg hover:border-gray-300 transition-colors`}
@@ -448,7 +488,7 @@ export default function FitnessOnboarding({ userIdFromPath }: { userIdFromPath?:
 
           {question.question_type === "checkbox" && question.options && (
             <div className="space-y-3">
-              {question.options.map((option) => (
+              {(Array.isArray(question.options) ? question.options : []).map((option) => (
                 <div
                   key={option}
                   className={`flex items-center space-x-3 p-4 border-2 ${error ? "border-red-500" : "border-gray-200"} rounded-lg hover:border-gray-300 transition-colors`}

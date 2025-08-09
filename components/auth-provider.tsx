@@ -40,53 +40,105 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [configured, setConfigured] = useState(false)
+  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
-    const checkConfiguration = () => {
-      const isConfigured = isSupabaseConfigured()
-      setConfigured(isConfigured)
+    if (initialized) return
 
-      if (!isConfigured) {
-        console.warn("Supabase is not configured. Please add your environment variables.")
-        setLoading(false)
-        return
-      }
+    let isCancelled = false
 
-      const supabase = getSupabaseClient() // Get client-side Supabase instance
+    const initializeAuth = async () => {
+      try {
+        const isConfigured = isSupabaseConfigured()
+        
+        if (isCancelled) return
+        setConfigured(isConfigured)
 
-      // Get initial session
-      getSessionClient().then(({ user: initialUser }) => {
-        setUser(initialUser)
-        if (initialUser) {
-          getUserProfileClient(initialUser.id).then(setProfile).catch(console.error)
+        if (!isConfigured) {
+          console.warn("Supabase is not configured. Please add your environment variables.")
+          if (!isCancelled) {
+            setLoading(false)
+            setInitialized(true)
+          }
+          return
         }
-        setLoading(false)
-      })
 
-      // Listen for auth changes
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event, session) => {
-        setUser(session?.user ?? null)
-        if (session?.user) {
+        const supabase = getSupabaseClient()
+
+        // Get initial session
+        const { user: initialUser } = await getSessionClient()
+        
+        if (isCancelled) return
+        setUser(initialUser)
+        
+        if (initialUser) {
           try {
-            const userProfile = await getUserProfileClient(session.user.id)
-            setProfile(userProfile)
+            const userProfile = await getUserProfileClient(initialUser.id)
+            if (!isCancelled) {
+              setProfile(userProfile as UserProfile)
+            }
           } catch (error) {
             console.error("Error fetching user profile:", error)
-            setProfile(null)
+            if (!isCancelled) {
+              setProfile(null)
+            }
           }
-        } else {
-          setProfile(null)
         }
-        setLoading(false)
-      })
 
-      return () => subscription.unsubscribe()
+        // Listen for auth changes
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (isCancelled) return
+          
+          setUser(session?.user ?? null)
+          if (session?.user) {
+            try {
+              const userProfile = await getUserProfileClient(session.user.id)
+              if (!isCancelled) {
+                setProfile(userProfile as UserProfile)
+              }
+            } catch (error) {
+              console.error("Error fetching user profile:", error)
+              if (!isCancelled) {
+                setProfile(null)
+              }
+            }
+          } else {
+            if (!isCancelled) {
+              setProfile(null)
+            }
+          }
+        })
+
+        if (!isCancelled) {
+          setLoading(false)
+          setInitialized(true)
+        }
+
+        return () => {
+          isCancelled = true
+          subscription.unsubscribe()
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error)
+        if (!isCancelled) {
+          setLoading(false)
+          setInitialized(true)
+        }
+      }
     }
 
-    const cleanup = checkConfiguration()
-    return cleanup
+    const cleanup = initializeAuth()
+    
+    return () => {
+      isCancelled = true
+      cleanup?.then(cleanupFn => {
+        if (cleanupFn && typeof cleanupFn === 'function') {
+          cleanupFn()
+        }
+      })
+    }
   }, [])
 
   const handleSignOut = async () => {

@@ -6,8 +6,8 @@ import FitnessOnboarding from "../page"
 
 export default function OnboardingWithUserId() {
   const params = useParams()
-  const userId = typeof params.userId === "string" ? params.userId : Array.isArray(params.userId) ? params.userId[0] : ""
+  const leadIdFromPath = typeof params.userId === "string" ? params.userId : Array.isArray(params.userId) ? params.userId[0] : ""
 
   // Renderiza o componente principal, passando o userId como prop
-  return <FitnessOnboarding userIdFromPath={userId} />
+  return <FitnessOnboarding userIdFromPath={leadIdFromPath} />
 }

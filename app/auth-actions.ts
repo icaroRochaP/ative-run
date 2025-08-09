@@ -42,21 +42,16 @@ export async function signUpAndCreateProfile(email: string, onboardingData: Reco
 
   const profileData: UserInsert = {
     id: data.user.id,
-    email: email,
     name: onboardingData.name || "",
-    age: onboardingData.age ? Number.parseInt(onboardingData.age) : null,
-    gender: onboardingData.gender || null,
-    weight: onboardingData.weight || null,
-    height: onboardingData.height || null,
-    primary_goal: onboardingData.primaryGoal || null,
-    subscription_status: "onboarding" as const,
+    phone: onboardingData.phone || "",
+    nickname: onboardingData.nickname || ""
   }
 
   try {
     const supabaseAdmin = createAdminClient()
     console.log("👤 Server Action: Attempting to insert user profile using admin client for ID:", profileData.id)
 
-    const { error: profileError } = await supabaseAdmin.from("users").insert(profileData)
+    const { error: profileError } = await supabaseAdmin.from("users").upsert(profileData, { onConflict: "id" })
 
     if (profileError) {
       console.error("❌ Server Action: Error creating user profile with admin client:", profileError)
