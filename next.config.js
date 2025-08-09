@@ -13,9 +13,7 @@ const nextConfig = {
     unoptimized: true,
   },
   // Enable detailed error reporting
-  experimental: {
-    serverComponentsExternalPackages: ["@supabase/supabase-js"],
-  },
+  serverExternalPackages: ["@supabase/supabase-js"],
 }
 
 module.exports = nextConfig
