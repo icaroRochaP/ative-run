@@ -1,6 +1,5 @@
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase"
 import type { Database } from "./database.types"
-// Removed: import { createProfileForNewUser } from "@/app/actions" // No longer needed
 
 export type User = Database["public"]["Tables"]["users"]["Row"]
 
@@ -28,12 +27,7 @@ export const signUp = async (email: string, password: string, userData: Partial<
       id: data.user.id,
       email: data.user.email!,
       name: userData.name || "",
-      age: userData.age,
-      gender: userData.gender,
-      weight: userData.weight,
-      height: userData.height,
-      primary_goal: userData.primary_goal,
-      subscription_status: "trial",
+      onboarding: false,
     })
 
     if (profileError) throw profileError
@@ -41,8 +35,6 @@ export const signUp = async (email: string, password: string, userData: Partial<
 
   return data
 }
-
-// Removed: createUserFromOnboarding function as it's replaced by signUpAndCreateProfile server action
 
 // Função para finalizar onboarding (client-side, if needed, but server action is also available)
 // This function is now also available as a server action in app/auth-actions.ts
@@ -58,7 +50,7 @@ export const completeOnboardingClient = async (userId: string, userData: Partial
     .from("users")
     .update({
       ...userData,
-      subscription_status: "trial", // Mudar de "onboarding" para "trial"
+      onboarding: true,
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId)

@@ -1,0 +1,29 @@
+História 2.2: Acompanhar o Consumo de Macros Diários
+Épico: 2 - Registro de Consumo e Adesão ao Plano
+Status: A Fazer
+Prioridade: 5 (Importante)
+
+História de Usuário
+Como um usuário do aplicativo,
+Eu quero ver um painel que mostra quantos macros eu já consumi hoje em comparação com a minha meta diária,
+Para que eu saiba o quanto ainda posso comer para atingir meus objetivos.
+
+Critérios de Aceitação
+Na tela principal de nutrição, deve haver um painel de "Metas Diárias de Macros" (como na sua tela de design).
+
+Este painel deve exibir as metas do usuário para Calorias, Proteínas, Carboidratos e Gorduras (dados da tabela user_macro_goals).
+
+O sistema deve somar os macros de todas as refeições que foram marcadas como consumidas hoje (buscando em meal_consumption_logs e calculando os totais).
+
+O painel deve exibir o total consumido versus a meta (ex: "Consumido: 450 cal / Meta: 1450 cal").
+
+O painel deve ser atualizado automaticamente toda vez que o usuário marcar uma nova refeição como consumida.
+
+Notas do Arquiteto
+Esta história conecta o registro (escrita) com a visualização (leitura).
+
+Leitura Inicial: Carregue as metas da tabela user_macro_goals.
+
+Cálculo: Faça uma SELECT em meal_consumption_logs para hoje, faça um JOIN com recipes -> recipe_ingredients -> foods para somar todos os macros consumidos. Isso é uma query complexa, ideal para uma Edge Function (ou "Database Function") no Supabase para otimizar a performance.
+
+Atualização da UI: Após uma escrita bem-sucedida na História 2.1, o front-end deve re-executar o cálculo do passo 2 para atualizar o painel em tempo real.

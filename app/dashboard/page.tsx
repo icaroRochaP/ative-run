@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AuthGuard } from "@/components/auth-guard"
 import {
   Target,
   Dumbbell,
@@ -27,7 +28,7 @@ import Image from "next/image"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
-export default function FitnessDashboard() {
+function FitnessDashboard() {
   const [activeTab, setActiveTab] = useState("summary")
   const [userData, setUserData] = useState<any>(null)
   const [selectedWorkout, setSelectedWorkout] = useState<any>(null)
@@ -1395,5 +1396,13 @@ export default function FitnessDashboard() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <AuthGuard requireAuth={true} requireOnboarding={true}>
+      <FitnessDashboard />
+    </AuthGuard>
   )
 }

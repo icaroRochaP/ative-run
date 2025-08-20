@@ -27,7 +27,13 @@ let supabaseClient: ReturnType<typeof createClient> | null = null
 
 if (supabaseUrl && supabaseAnonKey) {
   try {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    })
     console.log("✅ Supabase client created successfully")
   } catch (error) {
     console.error("❌ Error creating Supabase client:", error)
@@ -49,7 +55,13 @@ export const getSupabaseClient = () => {
 
   if (!clientInstance) {
     try {
-      clientInstance = createClient(supabaseUrl, supabaseAnonKey)
+      clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true
+        }
+      })
       console.log("✅ Supabase singleton client created")
     } catch (error) {
       console.error("❌ Error creating Supabase singleton client:", error)

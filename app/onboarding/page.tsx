@@ -68,7 +68,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
   }
 
   const router = useRouter()
-  const { user, isConfigured } = useAuth()
+  const { user, isConfigured, refreshProfile } = useAuth()
 
   // Function to get user's last answered question
   const getUserProgress = useCallback(async (userId: string) => {
@@ -654,6 +654,10 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
           email: responses.email,
         })
         console.log("✅ Onboarding completed for user:", userToComplete.id)
+        
+        // Refresh the profile to get the updated onboarding status
+        await refreshProfile()
+        console.log("🔄 Profile refreshed after onboarding completion")
       } else if (!isConfigured) {
         localStorage.setItem("onboardingData", JSON.stringify(responses))
         console.log("💾 Data stored locally")

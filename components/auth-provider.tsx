@@ -16,6 +16,7 @@ interface AuthContextType {
   profile: UserProfile | null
   loading: boolean
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
   isConfigured: boolean
 }
 
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
   isConfigured: false,
 })
 
@@ -67,22 +69,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Get initial session
         const { user: initialUser } = await getSessionClient()
+        console.log("🔍 AuthProvider: Initial session check", { user: initialUser?.id || 'none' })
         
         if (isCancelled) return
         setUser(initialUser)
         
         if (initialUser) {
+          console.log("✅ AuthProvider: User found, fetching profile...")
           try {
             const userProfile = await getUserProfileClient(initialUser.id)
             if (!isCancelled) {
               setProfile(userProfile as UserProfile)
+              console.log("✅ AuthProvider: Profile loaded", { userId: userProfile.id })
             }
           } catch (error) {
-            console.error("Error fetching user profile:", error)
+            console.error("❌ AuthProvider: Error fetching user profile:", error)
             if (!isCancelled) {
               setProfile(null)
             }
           }
+        } else {
+          console.log("❌ AuthProvider: No user found in session")
         }
 
         // Listen for auth changes
@@ -152,6 +159,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const handleRefreshProfile = async () => {
+    if (!configured || !user) return
+
+    try {
+      console.log("🔄 AuthProvider: Refreshing profile for user:", user.id)
+      const userProfile = await getUserProfileClient(user.id)
+      setProfile(userProfile as UserProfile)
+      console.log("✅ AuthProvider: Profile refreshed", { userId: userProfile.id, onboarding: userProfile.onboarding })
+    } catch (error) {
+      console.error("❌ AuthProvider: Error refreshing profile:", error)
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -159,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         loading,
         signOut: handleSignOut,
+        refreshProfile: handleRefreshProfile,
         isConfigured: configured,
       }}
     >

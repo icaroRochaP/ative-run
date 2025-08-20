@@ -45,7 +45,8 @@ export async function signUpAndCreateProfile(email: string, onboardingData: Reco
     name: onboardingData.name || "",
     phone: onboardingData.phone || "",
     nickname: onboardingData.nickname || "",
-    email: email
+    email: email,
+    onboarding: false, // Initialize onboarding as false for new users
   }
 
   try {
@@ -193,17 +194,24 @@ export async function saveIndividualOnboardingResponseAndProfile(
 }
 
 export async function completeOnboarding(userId: string, userData: Partial<User>) {
+  console.log("🎯 Server Action: Starting completeOnboarding for userId:", userId)
+  console.log("📋 Server Action: userData to update:", userData)
+  
   const supabase = await createServerClient()
   const { error } = await supabase
     .from("users")
     .update({
       ...userData,
-      subscription_status: "trial",
-      updated_at: new Date().toISOString(),
+      onboarding: true, // Mark onboarding as completed
     })
     .eq("id", userId)
 
-  if (error) throw error
+  if (error) {
+    console.error("❌ Server Action: Error in completeOnboarding:", error)
+    throw error
+  }
+  
+  console.log("✅ Server Action: completeOnboarding completed successfully for userId:", userId)
 }
 
 export async function signIn(prevState: any, formData: FormData) {
@@ -330,4 +338,61 @@ export async function updatePassword(prevState: any, formData: FormData) {
 
   console.log("✅ Server Action: User password updated successfully.")
   return { success: "Your password has been updated successfully!", error: null }
+}
+
+export async function changePasswordAndMarkAccountActive(
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+) {
+  console.log("🔐 Server Action: Starting changePasswordAndMarkAccountActive for userId:", userId)
+  
+  try {
+    const supabase = await createServerClient()
+    
+    // Get current user to verify they are authenticated
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      console.error("❌ Server Action: User not authenticated:", userError)
+      throw new Error("User not authenticated")
+    }
+
+    // Update to new password directly (Supabase will handle current password validation internally)
+    const { error: updateError } = await supabase.auth.updateUser({ 
+      password: newPassword 
+    })
+
+    if (updateError) {
+      console.error("❌ Server Action: Password update failed:", updateError)
+      // Common error codes from Supabase auth
+      if (updateError.message.includes("New password should be different")) {
+        throw new Error("New password must be different from current password")
+      } else if (updateError.message.includes("Password is too weak")) {
+        throw new Error("Password is too weak")
+      } else {
+        throw new Error("Error updating password")
+      }
+    }
+
+    // Mark account as no longer new (new_account = false)
+    const { error: profileError } = await supabase
+      .from("users")
+      .update({ 
+        new_account: false
+      })
+      .eq("id", userId)
+
+    if (profileError) {
+      console.error("❌ Server Action: Profile update failed:", profileError)
+      throw new Error("Error updating profile")
+    }
+
+    console.log("✅ Server Action: Password changed and account marked as active for userId:", userId)
+    return { success: true, error: null }
+  } catch (error) {
+    console.error("❌ Server Action: Error in changePasswordAndMarkAccountActive:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    return { success: false, error: errorMessage }
+  }
 }
