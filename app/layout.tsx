@@ -9,9 +9,9 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "FitJourney - Your Personal Fitness Companion",
-  description: "Transform your fitness journey with personalized workouts, nutrition plans, and progress tracking.",
-    generator: 'v0.dev'
+  title: "Aleen.ai",
+  description: "Transform your health journey with personalized workouts, nutrition plans, and AI coaching.",
+  generator: 'v0.dev',
 }
 
 export default function RootLayout({

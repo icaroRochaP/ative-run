@@ -71,7 +71,7 @@ export function AuthGuard({ children, requireAuth = true, requireOnboarding = tr
     console.log("⏳ AuthGuard: Loading...")
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-black"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-4 border-aleen-light/40 border-t-4 border-t-aleen-primary"></div>
       </div>
     )
   }
@@ -91,7 +91,7 @@ export function AuthGuard({ children, requireAuth = true, requireOnboarding = tr
     console.log("⏳ AuthGuard: User authenticated but profile loading...")
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-black"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-4 border-aleen-light/40 border-t-4 border-t-aleen-primary"></div>
       </div>
     )
   }

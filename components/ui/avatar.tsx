@@ -42,7 +42,7 @@ const AvatarFallback = React.forwardRef<
       "flex h-full w-full items-center justify-center rounded-full bg-muted",
       className
     )}
-    {...props}
+  {...props}
   />
 ))
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName

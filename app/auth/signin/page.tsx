@@ -5,7 +5,7 @@ import { DebugPanel } from "@/components/debug-panel"
 export default function SignInPage() {
   return (
     <AuthGuard requireAuth={false}>
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+  <div className="min-h-screen bg-aleen-light flex items-center justify-center pt-0 px-4 pb-4">
         <SignInForm />
         <DebugPanel />
       </div>
