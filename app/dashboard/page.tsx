@@ -1,10 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { getSupabaseClient } from "@/lib/supabase"
+import { useAuth } from "@/components/auth-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { formatDisplayName, getInitials } from "@/lib/user-utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AuthGuard } from "@/components/auth-guard"
 import {
@@ -22,7 +26,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Sparkles,
-  Heart,
+  LogOut,
 } from "lucide-react"
 import Image from "next/image"
 import { Label } from "@/components/ui/label"
@@ -30,9 +34,12 @@ import { Input } from "@/components/ui/input"
 
 function FitnessDashboard() {
   const [activeTab, setActiveTab] = useState("summary")
-  const [userData, setUserData] = useState<any>(null)
-  const [selectedWorkout, setSelectedWorkout] = useState<any>(null)
-  const [selectedHistoryWorkout, setSelectedHistoryWorkout] = useState<any>(null)
+  const [userData, setUserData] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [displayName, setDisplayName] = useState<string | null>(null)
+  const [initials, setInitials] = useState<string>("")
+  const [nameLoading, setNameLoading] = useState<boolean>(true)
+  const [selectedWorkout, setSelectedWorkout] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [selectedHistoryWorkout, setSelectedHistoryWorkout] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
   const [currentHistoryPage, setCurrentHistoryPage] = useState(0)
   const [showWeightUpdate, setShowWeightUpdate] = useState(false)
   const [newWeight, setNewWeight] = useState("")
@@ -50,7 +57,22 @@ function FitnessDashboard() {
 
   const [showWeeklyPlan, setShowWeeklyPlan] = useState(false)
   const [selectedDay, setSelectedDay] = useState("monday")
-  const [selectedMeal, setSelectedMeal] = useState<any>(null)
+  const [selectedMeal, setSelectedMeal] = useState<any>(null) // eslint-disable-line @typescript-eslint/no-explicit-any
+  const router = useRouter()
+  
+  // Get auth context for user data
+  const { profile, loading: authLoading } = useAuth()
+
+  const handleLogout = async () => {
+    try {
+      const supabase = getSupabaseClient()
+      await supabase.auth.signOut()
+    } catch (err) {
+      console.error("Logout error:", err)
+    } finally {
+      router.push('/auth/signin')
+    }
+  }
 
   useEffect(() => {
     const savedData = localStorage.getItem("onboardingData")
@@ -59,9 +81,61 @@ function FitnessDashboard() {
     }
   }, [])
 
+  // Manage display name and initials derived from auth profile or userData.name
+  useEffect(() => {
+    let mounted = true
+    const minDelay = 300 // ms minimum loader to avoid flash
+    let timeoutId: any = null // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    async function computeName() {
+      setNameLoading(true)
+      
+      // Priority: 1) profile.name from auth, 2) userData.name from localStorage, 3) null
+      const name = profile?.name ?? userData?.name ?? null
+
+      // Wait at least minDelay to avoid flashing
+      const start = Date.now()
+
+      const formatted = formatDisplayName(name)
+      const initialsValue = getInitials(name)
+
+      const elapsed = Date.now() - start
+      const remaining = Math.max(0, minDelay - elapsed)
+
+      // If name is null/undefined, wait up to 5s for it to appear
+      if (!formatted) {
+        timeoutId = setTimeout(() => {
+          if (!mounted) return
+          // fallback after 5s
+          setDisplayName("Usuário")
+          setInitials("")
+          setNameLoading(false)
+        }, 5000)
+        return
+      }
+
+      setTimeout(() => {
+        if (!mounted) return
+        setDisplayName(formatted)
+        setInitials(initialsValue)
+        setNameLoading(false)
+      }, remaining)
+    }
+
+    // Only compute name if we're not currently loading auth and we have some data
+    if (!authLoading) {
+      computeName()
+    }
+
+    return () => {
+      mounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [profile?.name, userData?.name, authLoading])
+
   const user = {
-    name: userData?.name || "Alex Johnson",
-    avatar: "/placeholder.svg?height=80&width=80",
+    name: displayName || "Usuário",
+    avatar: "/placeholder.svg?height=80&width=80", 
     subscriptionStatus: "active",
     nextRenewal: "2024-02-15",
     goals: [
@@ -70,33 +144,6 @@ function FitnessDashboard() {
       { name: "Cardio Endurance", progress: 85, target: "30 min", current: "25.5 min" },
     ],
   }
-
-  const currentWorkout = [
-    {
-      name: "Push-ups",
-      sets: 3,
-      reps: "12-15",
-      weight: "Bodyweight",
-      icon: "💪",
-      videoId: "IODxDxX7oi4",
-    },
-    {
-      name: "Squats",
-      sets: 4,
-      reps: "10-12",
-      weight: "135 lbs",
-      icon: "🦵",
-      videoId: "aclHkVaku9U",
-    },
-    {
-      name: "Bench Press",
-      sets: 3,
-      reps: "8-10",
-      weight: "185 lbs",
-      icon: "🏋️",
-      videoId: "rT7DgCr-3pg",
-    },
-  ]
 
   const [progressPhotos, setProgressPhotos] = useState([
     { date: "2024-01-01", weight: "74.0", image: "/placeholder.svg?height=200&width=150" },
@@ -317,85 +364,82 @@ function FitnessDashboard() {
     },
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-black text-white"
-      case "trial":
-        return "bg-gray-600 text-white"
-      case "blocked":
-        return "bg-gray-800 text-white"
-      case "paused":
-        return "bg-gray-400 text-white"
-      case "canceled":
-        return "bg-gray-300 text-black"
-      default:
-        return "bg-gray-500 text-white"
-    }
-  }
-
   const getStatusText = (status: string) => {
     return status.charAt(0).toUpperCase() + status.slice(1)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-aleen-light to-white">
       <div className="container mx-auto px-4 py-6 max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-center mb-8">
-          <h1 className="text-black font-bold text-lg">Dashboard</h1>
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex items-center justify-center">
+            <div className="w-32 h-16 flex items-center justify-center">
+              <Image
+                src="/placeholder-logo.png"
+                alt="Aleen.ai Logo"
+                width={128}
+                height={64}
+              />
+            </div>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8 bg-white border-2 border-gray-200 shadow-sm">
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-white border-0 shadow-xl rounded-2xl p-1">
             <TabsTrigger
               value="summary"
-              className="text-xs font-medium data-[state=active]:bg-black data-[state=active]:text-white"
+              className="text-xs font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-aleen-primary data-[state=active]:to-aleen-secondary data-[state=active]:text-white rounded-xl transition-all duration-300"
             >
-              Summary
+              Resumo
             </TabsTrigger>
             <TabsTrigger
               value="training"
-              className="text-xs font-medium data-[state=active]:bg-black data-[state=active]:text-white"
+              className="text-xs font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-aleen-primary data-[state=active]:to-aleen-secondary data-[state=active]:text-white rounded-xl transition-all duration-300"
             >
-              Training
+              Treino
             </TabsTrigger>
             <TabsTrigger
               value="progress"
-              className="text-xs font-medium data-[state=active]:bg-black data-[state=active]:text-white"
+              className="text-xs font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-aleen-primary data-[state=active]:to-aleen-secondary data-[state=active]:text-white rounded-xl transition-all duration-300"
             >
-              Progress
+              Progresso
             </TabsTrigger>
             <TabsTrigger
               value="nutrition"
-              className="text-xs font-medium data-[state=active]:bg-black data-[state=active]:text-white"
+              className="text-xs font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-aleen-primary data-[state=active]:to-aleen-secondary data-[state=active]:text-white rounded-xl transition-all duration-300"
             >
-              Nutrition
+              Nutrição
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="summary" className="space-y-6">
             {/* User Header */}
-            <Card className="bg-black text-white border-2 border-gray-200 shadow-lg">
+            <Card className="bg-gradient-to-r from-aleen-primary to-aleen-secondary text-white border-0 shadow-2xl rounded-3xl overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4">
-                  <Avatar className="h-16 w-16 border-2 border-white">
-                    <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                    <AvatarFallback className="bg-white text-black font-bold">
-                      {user.name
-                        .split(" ")
-                        .map((n: string) => n[0])
-                        .join("")
-                        .toUpperCase()}
+                  <Avatar className="h-16 w-16 border-3 border-aleen-light shadow-lg">
+                    <AvatarFallback className="bg-white text-aleen-primary font-bold text-lg" aria-label={`Avatar de ${user.name}`}>
+                      {nameLoading ? (
+                        <div className="animate-pulse bg-aleen-primary/30 rounded w-8 h-8"></div>
+                      ) : (
+                        initials || (user.name ? user.name.charAt(0).toUpperCase() : "U")
+                      )}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <h1 className="text-2xl font-bold">{user.name}</h1>
+                    <h1 className="text-2xl font-bold">
+                      {nameLoading ? (
+                        <div className="animate-pulse bg-white/30 rounded h-8 w-32"></div>
+                      ) : (
+                        user.name
+                      )}
+                    </h1>
                     <div className="flex items-center space-x-2 mt-2">
-                      <Badge className={getStatusColor(user.subscriptionStatus)}>
+                      <Badge className="bg-aleen-light text-aleen-primary font-semibold">
                         {getStatusText(user.subscriptionStatus)}
                       </Badge>
-                      <span className="text-sm opacity-90">Renews: {user.nextRenewal}</span>
+                      <span className="text-sm opacity-90">Renovação: {user.nextRenewal}</span>
                     </div>
                   </div>
                 </div>
@@ -403,1006 +447,16 @@ function FitnessDashboard() {
             </Card>
 
             {/* Workouts This Month & Day Streak */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
+            <Card className="bg-white border-0 shadow-2xl rounded-3xl overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <Zap className="mr-2 h-5 w-5" />
-                  Your Activity
+                <CardTitle className="text-gray-800 flex items-center">
+                  <Zap className="mr-2 h-5 w-5 text-aleen-secondary" />
+                  Sua Atividade
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="text-center p-6 bg-gradient-to-br from-aleen-primary to-aleen-secondary rounded-2xl text-white shadow-lg">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-3">
                     <Zap className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-2xl font-bold text-black">12</div>
-                  <div className="text-sm text-gray-600">Workouts This Month</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Award className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="text-2xl font-bold text-black">7</div>
-                  <div className="text-sm text-gray-600">Day Streak</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions / Welcome Message */}
-            <Card className="bg-gray-100 border-2 border-gray-300 shadow-lg">
-              <CardContent className="p-4">
-                {userData ? (
-                  <div className="text-center">
-                    <h3 className="text-black font-semibold mb-2">Welcome to your Journey, {userData.name}! 🎉</h3>
-                    <p className="text-gray-600 text-sm mb-3">
-                      Your personalized fitness plan is being created based on your onboarding responses.
-                    </p>
-                    <Badge className="bg-black text-white">Plan ready in 24 hours</Badge>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <h3 className="text-black font-semibold mb-2">Need help reaching your goals?</h3>
-                    <p className="text-gray-600 text-sm mb-3">Chat with our AI and get a tailored plan just for you.</p>
-                    <Button className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 text-sm">
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Chat on WhatsApp
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Subscription Management */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  Subscription
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3">
-                  Update Payment Method
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="training" className="space-y-6">
-            {/* Training Plan Section */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <Dumbbell className="mr-2 h-5 w-5" />
-                  Training Plan
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {[
-                  {
-                    id: 1,
-                    emoji: "💪",
-                    title: "Upper Body Strength",
-                    exercises: 6,
-                    totalSets: 18,
-                    day: "Monday",
-                  },
-                  {
-                    id: 2,
-                    emoji: "🦵",
-                    title: "Lower Body Power",
-                    exercises: 5,
-                    totalSets: 15,
-                    day: "Wednesday",
-                  },
-                  {
-                    id: 3,
-                    emoji: "🏃",
-                    title: "Cardio & Core",
-                    exercises: 4,
-                    totalSets: 12,
-                    day: "Friday",
-                  },
-                ].map((workout) => (
-                  <Card
-                    key={workout.id}
-                    className="bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => setSelectedWorkout(workout)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-3xl">{workout.emoji}</span>
-                          <div>
-                            <h3 className="text-black font-semibold">{workout.title}</h3>
-                            <p className="text-gray-600 text-sm">{workout.day}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-black font-medium">{workout.exercises} exercises</div>
-                          <div className="text-gray-600 text-sm">{workout.totalSets} total sets</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Training History Section */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  Training History
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 mb-4">
-                  {[
-                    {
-                      id: 1,
-                      emoji: "💪",
-                      title: "Upper Body Strength",
-                      date: "Today",
-                      duration: "45 min",
-                      exercises: 6,
-                      totalSets: 18,
-                      completed: true,
-                    },
-                    {
-                      id: 2,
-                      emoji: "🦵",
-                      title: "Lower Body Power",
-                      date: "Yesterday",
-                      duration: "38 min",
-                      exercises: 5,
-                      totalSets: 15,
-                      completed: true,
-                    },
-                    {
-                      id: 3,
-                      emoji: "🏃",
-                      title: "Cardio & Core",
-                      date: "2 days ago",
-                      duration: "30 min",
-                      exercises: 4,
-                      totalSets: 12,
-                      completed: true,
-                    },
-                    {
-                      id: 4,
-                      emoji: "💪",
-                      title: "Upper Body Strength",
-                      date: "4 days ago",
-                      duration: "42 min",
-                      exercises: 6,
-                      totalSets: 18,
-                      completed: true,
-                    },
-                    {
-                      id: 5,
-                      emoji: "🦵",
-                      title: "Lower Body Power",
-                      date: "6 days ago",
-                      duration: "40 min",
-                      exercises: 5,
-                      totalSets: 15,
-                      completed: true,
-                    },
-                  ]
-                    .slice(currentHistoryPage * 3, (currentHistoryPage + 1) * 3)
-                    .map((workout) => (
-                      <Card
-                        key={workout.id}
-                        className="bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => setSelectedHistoryWorkout(workout)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <span className="text-2xl">{workout.emoji}</span>
-                              <div>
-                                <h3 className="text-black font-semibold">{workout.title}</h3>
-                                <p className="text-gray-600 text-sm">
-                                  {workout.date} • {workout.duration}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-black font-medium">{workout.exercises} exercises</div>
-                              <div className="text-gray-600 text-sm">{workout.totalSets} sets completed</div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
-
-                {/* Pagination */}
-                <div className="flex justify-between items-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentHistoryPage(Math.max(0, currentHistoryPage - 1))}
-                    disabled={currentHistoryPage === 0}
-                    className="border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent disabled:opacity-50"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Previous
-                  </Button>
-                  <span className="text-gray-600 text-sm">
-                    Page {currentHistoryPage + 1} of {Math.ceil(5 / 3)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentHistoryPage(Math.min(Math.ceil(5 / 3) - 1, currentHistoryPage + 1))}
-                    disabled={currentHistoryPage >= Math.ceil(5 / 3) - 1}
-                    className="border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent disabled:opacity-50"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="progress" className="space-y-6">
-            {/* Weight Progress Section */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <Target className="mr-2 h-5 w-5" />
-                  Weight Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Current Weight Display */}
-                <div className="text-center space-y-2">
-                  <div className="text-4xl font-bold text-black">72.5 kg</div>
-                  <div className="text-gray-600">Current Weight</div>
-                  <div className="flex items-center justify-center space-x-2 text-sm">
-                    <span className="text-gray-500">Goal:</span>
-                    <span className="text-black font-medium">68 kg</span>
-                    <span className="text-gray-500">•</span>
-                    <span className="text-gray-500">Remaining:</span>
-                    <span className="text-black font-medium">4.5 kg</span>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Progress</span>
-                    <span className="text-black font-medium">55% Complete</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div className="bg-black h-3 rounded-full transition-all duration-300" style={{ width: "55%" }} />
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Start: 78 kg</span>
-                    <span>Goal: 68 kg</span>
-                  </div>
-                </div>
-
-                {/* Add Update Button */}
-                <Button
-                  className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3"
-                  onClick={() => setShowWeightUpdate(true)}
-                >
-                  <Zap className="h-4 w-4 mr-2" />
-                  Add Weight Update
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Recent Weight Updates */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <TrendingUp className="mr-2 h-5 w-5" />
-                  Recent Updates
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 mb-4">
-                  {weightUpdates.slice(currentWeightPage * 3, (currentWeightPage + 1) * 3).map((update, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-bold">{update.weight}</span>
-                        </div>
-                        <div>
-                          <div className="text-black font-medium">{update.weight} kg</div>
-                          <div className="text-gray-600 text-sm">{update.date}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-sm font-medium ${update.change > 0 ? "text-red-600" : update.change < 0 ? "text-green-600" : "text-gray-600"}`}
-                        >
-                          {update.change > 0 ? "+" : ""}
-                          {update.change} kg
-                        </div>
-                        {update.hasPhoto && (
-                          <div className="text-xs text-gray-500 flex items-center">
-                            <Camera className="h-3 w-3 mr-1" />
-                            Photo added
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pagination for Weight Updates */}
-                <div className="flex justify-between items-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentWeightPage(Math.max(0, currentWeightPage - 1))}
-                    disabled={currentWeightPage === 0}
-                    className="border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent disabled:opacity-50"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Previous
-                  </Button>
-                  <span className="text-gray-600 text-sm">
-                    Page {currentWeightPage + 1} of {Math.ceil(weightUpdates.length / 3)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentWeightPage(Math.min(Math.ceil(weightUpdates.length / 3) - 1, currentWeightPage + 1))
-                    }
-                    disabled={currentWeightPage >= Math.ceil(weightUpdates.length / 3) - 1}
-                    className="border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent disabled:opacity-50"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Progress Photos */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <Camera className="mr-2 h-5 w-5" />
-                  Progress Photos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {progressPhotos.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-3">
-                    {progressPhotos.map((photo, index) => (
-                      <div key={index} className="relative">
-                        <Image
-                          src={photo.image || "/placeholder.svg"}
-                          alt={`Progress ${photo.date}`}
-                          width={100}
-                          height={133}
-                          className="rounded-lg object-cover w-full aspect-[3/4] border-2 border-gray-200"
-                        />
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-1 rounded-b-lg">
-                          <div>{photo.date}</div>
-                          {photo.weight && <div>{photo.weight} kg</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Camera className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 mb-4">No progress photos yet</p>
-                    <p className="text-gray-500 text-sm">Add your first weight update with a photo to get started!</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Social Sharing */}
-            <Card className="bg-black text-white border-2 border-gray-200 shadow-lg">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">Share Your Progress</h3>
-                    <p className="text-sm opacity-90">Inspire others with your journey</p>
-                  </div>
-                  <Button variant="secondary" size="sm" className="bg-white text-black hover:bg-gray-100">
-                    <Instagram className="h-4 w-4 mr-1" />
-                    Share
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="nutrition" className="space-y-6">
-            {/* Daily Macro Goals - Destaque para Calorias */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <Target className="mr-2 h-5 w-5" />
-                  Daily Macro Goals
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Destaque das Calorias */}
-                <div className="text-center space-y-2 p-6 bg-black rounded-lg">
-                  <div className="text-4xl font-bold text-white">1,450</div>
-                  <div className="text-white opacity-90">Daily Calories</div>
-                  <div className="text-sm text-white opacity-75">Target for weight loss</div>
-                </div>
-
-                {/* Macronutrientes */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-gray-600 text-sm mb-1">Protein</div>
-                    <div className="text-2xl font-bold text-black">120</div>
-                    <div className="text-gray-500 text-xs">grams</div>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-gray-600 text-sm mb-1">Carbs</div>
-                    <div className="text-2xl font-bold text-black">150</div>
-                    <div className="text-gray-500 text-xs">grams</div>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-gray-600 text-sm mb-1">Fat</div>
-                    <div className="text-2xl font-bold text-black">70</div>
-                    <div className="text-gray-500 text-xs">grams</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Today's Meal Plan */}
-            <Card className="bg-white border-2 border-gray-200 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-black flex items-center">
-                  <Apple className="mr-2 h-5 w-5" />
-                  Today's Meal Plan
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {weeklyMealPlan.monday.meals.map((meal, index) => (
-                  <Card
-                    key={index}
-                    className="bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                    onClick={() => setSelectedMeal(meal)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <h3 className="text-black font-semibold">{meal.meal}</h3>
-                        <Badge variant="secondary" className="bg-black text-white">
-                          {meal.calories} cal
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm mb-3">
-                        <div className="text-center">
-                          <div className="text-gray-600">Protein</div>
-                          <div className="text-black font-medium">{meal.protein}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-gray-600">Carbs</div>
-                          <div className="text-black font-medium">{meal.carbs}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-gray-600">Fat</div>
-                          <div className="text-black font-medium">{meal.fat}</div>
-                        </div>
-                      </div>
-                      <div className="text-xs text-gray-500">Click to view details</div>
-                    </CardContent>
-                  </Card>
-                ))}
-                <Button
-                  className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 mt-4"
-                  onClick={() => setShowWeeklyPlan(true)}
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  Weekly Plan
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          {/* Workout Detail Modal */}
-          {selectedWorkout && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-              <Card className="w-full max-w-md bg-white border-2 border-gray-200 shadow-xl max-h-[90vh] overflow-y-auto">
-                <CardHeader className="border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-3xl">{selectedWorkout.emoji}</span>
-                      <div>
-                        <CardTitle className="text-black">{selectedWorkout.title}</CardTitle>
-                        <p className="text-gray-600 text-sm">{selectedWorkout.day}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedWorkout(null)}
-                      className="text-gray-500 hover:text-black"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  {[
-                    {
-                      name: "Push-ups",
-                      sets: [
-                        { reps: "12", weight: "Bodyweight", completed: false },
-                        { reps: "10", weight: "Bodyweight", completed: false },
-                        { reps: "8", weight: "Bodyweight", completed: false },
-                      ],
-                      videoId: "IODxDxX7oi4",
-                    },
-                    {
-                      name: "Bench Press",
-                      sets: [
-                        { reps: "10", weight: "185 lbs", completed: false },
-                        { reps: "8", weight: "185 lbs", completed: false },
-                        { reps: "6", weight: "185 lbs", completed: false },
-                      ],
-                      videoId: "rT7DgCr-3pg",
-                    },
-                    {
-                      name: "Shoulder Press",
-                      sets: [
-                        { reps: "12", weight: "135 lbs", completed: false },
-                        { reps: "10", weight: "135 lbs", completed: false },
-                      ],
-                      videoId: "qEwKCR5JCog",
-                    },
-                  ].map((exercise, exerciseIndex) => (
-                    <Card key={exerciseIndex} className="bg-gray-50 border border-gray-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-black font-semibold">{exercise.name}</h3>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Watch Demo
-                          </Button>
-                        </div>
-                        <div className="space-y-2">
-                          {exercise.sets.map((set, setIndex) => (
-                            <div
-                              key={setIndex}
-                              className="flex items-center justify-between p-2 bg-white rounded border border-gray-200"
-                            >
-                              <span className="text-sm text-gray-600">Set {setIndex + 1}</span>
-                              <span className="text-sm text-black font-medium">
-                                {set.reps} reps × {set.weight}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant={set.completed ? "default" : "outline"}
-                                className={
-                                  set.completed
-                                    ? "bg-black text-white hover:bg-gray-800"
-                                    : "border border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-                                }
-                              >
-                                {set.completed ? "✓" : "Complete"}
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  <Button
-                    className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 mt-6"
-                    onClick={() => setSelectedWorkout(null)}
-                  >
-                    Finish Workout
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          {/* History Workout Detail Modal */}
-          {selectedHistoryWorkout && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-              <Card className="w-full max-w-md bg-white border-2 border-gray-200 shadow-xl max-h-[90vh] overflow-y-auto">
-                <CardHeader className="border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-3xl">{selectedHistoryWorkout.emoji}</span>
-                      <div>
-                        <CardTitle className="text-black">{selectedHistoryWorkout.title}</CardTitle>
-                        <p className="text-gray-600 text-sm">
-                          {selectedHistoryWorkout.date} • {selectedHistoryWorkout.duration}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedHistoryWorkout(null)}
-                      className="text-gray-500 hover:text-black"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  {[
-                    {
-                      name: "Push-ups",
-                      sets: [
-                        { reps: "12", weight: "Bodyweight", completed: true },
-                        { reps: "10", weight: "Bodyweight", completed: true },
-                        { reps: "8", weight: "Bodyweight", completed: true },
-                      ],
-                    },
-                    {
-                      name: "Bench Press",
-                      sets: [
-                        { reps: "10", weight: "185 lbs", completed: true },
-                        { reps: "8", weight: "185 lbs", completed: true },
-                        { reps: "6", weight: "185 lbs", completed: true },
-                      ],
-                    },
-                    {
-                      name: "Shoulder Press",
-                      sets: [
-                        { reps: "12", weight: "135 lbs", completed: true },
-                        { reps: "10", weight: "135 lbs", completed: true },
-                      ],
-                    },
-                  ].map((exercise, exerciseIndex) => (
-                    <Card key={exerciseIndex} className="bg-gray-50 border border-gray-200">
-                      <CardContent className="p-4">
-                        <h3 className="text-black font-semibold mb-3">{exercise.name}</h3>
-                        <div className="space-y-2">
-                          {exercise.sets.map((set, setIndex) => (
-                            <div
-                              key={setIndex}
-                              className="flex items-center justify-between p-2 bg-white rounded border border-gray-200"
-                            >
-                              <span className="text-sm text-gray-600">Set {setIndex + 1}</span>
-                              <span className="text-sm text-black font-medium">
-                                {set.reps} reps × {set.weight}
-                              </span>
-                              <Badge className="bg-black text-white">Completed</Badge>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          {/* Weight Update Modal */}
-          {showWeightUpdate && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-              <Card className="w-full max-w-md bg-white border-2 border-gray-200 shadow-xl">
-                <CardHeader className="border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-black">Add Weight Update</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowWeightUpdate(false)
-                        setNewWeight("")
-                        setNewPhoto(null)
-                      }}
-                      className="text-gray-500 hover:text-black"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                  {/* Weight Input */}
-                  <div className="space-y-3">
-                    <Label htmlFor="weight" className="text-black font-medium">
-                      Current Weight
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="weight"
-                        type="number"
-                        step="0.1"
-                        value={newWeight}
-                        onChange={(e) => setNewWeight(e.target.value)}
-                        placeholder="72.5"
-                        className="border-2 border-gray-200 focus:border-black text-black placeholder:text-gray-400 py-3 pr-12"
-                      />
-                      <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">kg</span>
-                    </div>
-                  </div>
-
-                  {/* Photo Upload */}
-                  <div className="space-y-3">
-                    <Label className="text-black font-medium">Progress Photo (Optional)</Label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                      {newPhoto ? (
-                        <div className="space-y-3">
-                          <div className="w-20 h-20 bg-gray-100 rounded-lg mx-auto flex items-center justify-center">
-                            <Camera className="h-8 w-8 text-gray-400" />
-                          </div>
-                          <p className="text-sm text-black font-medium">{newPhoto.name}</p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setNewPhoto(null)}
-                            className="border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-                          >
-                            Remove Photo
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <Camera className="h-12 w-12 text-gray-400 mx-auto" />
-                          <div>
-                            <p className="text-black font-medium mb-1">Add a progress photo</p>
-                            <p className="text-gray-600 text-sm">Capture your transformation journey</p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              // Simulate file selection
-                              const fakeFile = new File([""], "progress-photo.jpg", { type: "image/jpeg" })
-                              setNewPhoto(fakeFile)
-                            }}
-                            className="border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-                          >
-                            Choose Photo
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowWeightUpdate(false)
-                        setNewWeight("")
-                        setNewPhoto(null)
-                      }}
-                      className="flex-1 border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (newWeight) {
-                          const today = new Date().toLocaleDateString()
-                          const lastWeight = Number.parseFloat(weightUpdates[0]?.weight || "73")
-                          const change = Number.parseFloat(newWeight) - lastWeight
-
-                          const newUpdate = {
-                            weight: newWeight,
-                            date: "Today",
-                            change: Number.parseFloat(change.toFixed(1)),
-                            hasPhoto: !!newPhoto,
-                          }
-
-                          setWeightUpdates([newUpdate, ...weightUpdates])
-
-                          if (newPhoto) {
-                            const newProgressPhoto = {
-                              date: today,
-                              weight: newWeight,
-                              image: "/placeholder.svg?height=200&width=150",
-                            }
-                            setProgressPhotos([newProgressPhoto, ...progressPhotos])
-                          }
-
-                          setShowWeightUpdate(false)
-                          setNewWeight("")
-                          setNewPhoto(null)
-                        }
-                      }}
-                      disabled={!newWeight}
-                      className="flex-1 bg-black hover:bg-gray-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Save Update
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          {/* Weekly Meal Plan Modal */}
-          {showWeeklyPlan && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-              <Card className="w-full max-w-md bg-white border-2 border-gray-200 shadow-xl max-h-[90vh] overflow-y-auto">
-                <CardHeader className="border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-black">Weekly Meal Plan</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowWeeklyPlan(false)}
-                      className="text-gray-500 hover:text-black"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {/* Day Selector */}
-                  <div className="mb-6">
-                    <div className="grid grid-cols-7 gap-1">
-                      {Object.entries(weeklyMealPlan).map(([key, dayData]) => (
-                        <Button
-                          key={key}
-                          variant={selectedDay === key ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedDay(key)}
-                          className={
-                            selectedDay === key
-                              ? "bg-black text-white hover:bg-gray-800 text-xs p-2"
-                              : "border border-gray-300 text-black hover:bg-gray-50 bg-transparent text-xs p-2"
-                          }
-                        >
-                          {dayData.day.slice(0, 3)}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Selected Day Details */}
-                  <div className="space-y-4">
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <h3 className="text-xl font-bold text-black mb-1">
-                        {weeklyMealPlan[selectedDay as keyof typeof weeklyMealPlan].day}
-                      </h3>
-                      <div className="text-2xl font-bold text-black">
-                        {weeklyMealPlan[selectedDay as keyof typeof weeklyMealPlan].totalCalories} cal
-                      </div>
-                      <div className="text-sm text-gray-600">Total daily calories</div>
-                    </div>
-
-                    {/* Meals for Selected Day */}
-                    <div className="space-y-3">
-                      {weeklyMealPlan[selectedDay as keyof typeof weeklyMealPlan].meals.map((meal, index) => (
-                        <Card
-                          key={index}
-                          className="bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => {
-                            setSelectedMeal(meal)
-                            setShowWeeklyPlan(false)
-                          }}
-                        >
-                          <CardContent className="p-3">
-                            <div className="flex justify-between items-center mb-2">
-                              <h4 className="text-black font-semibold">{meal.meal}</h4>
-                              <Badge variant="secondary" className="bg-black text-white text-xs">
-                                {meal.calories} cal
-                              </Badge>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div className="text-center">
-                                <div className="text-gray-600">P</div>
-                                <div className="text-black font-medium">{meal.protein}</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-gray-600">C</div>
-                                <div className="text-black font-medium">{meal.carbs}</div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-gray-600">F</div>
-                                <div className="text-black font-medium">{meal.fat}</div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          {/* Meal Detail Modal */}
-          {selectedMeal && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-              <Card className="w-full max-w-md bg-white border-2 border-gray-200 shadow-xl">
-                <CardHeader className="border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-black">{selectedMeal.meal} Details</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedMeal(null)}
-                      className="text-gray-500 hover:text-black"
-                    >
-                      ✕
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                  {/* Meal Macros */}
-                  <div className="text-center space-y-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-3xl font-bold text-black">{selectedMeal.calories}</div>
-                    <div className="text-gray-600">Calories</div>
-                    <div className="grid grid-cols-3 gap-4 mt-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-black">{selectedMeal.protein}</div>
-                        <div className="text-sm text-gray-600">Protein</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-black">{selectedMeal.carbs}</div>
-                        <div className="text-sm text-gray-600">Carbs</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-black">{selectedMeal.fat}</div>
-                        <div className="text-sm text-gray-600">Fat</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Food List */}
-                  <div className="space-y-3">
-                    <h4 className="text-black font-semibold">Ingredients:</h4>
-                    <div className="space-y-2">
-                      {selectedMeal.foods.map((food: string, index: number) => (
-                        <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="w-2 h-2 bg-black rounded-full mr-3"></div>
-                          <span className="text-black">{food}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedMeal(null)}
-                      className="flex-1 border-2 border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-                    >
-                      Close
-                    </Button>
-                    <Button className="flex-1 bg-black hover:bg-gray-800 text-white font-semibold">
-                      Mark as Eaten
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          {/* Floating Action Button */}
-          <div className="fixed bottom-6 right-6">
-            <Button
-              size="lg"
-              className="rounded-full h-14 w-14 bg-black hover:bg-gray-800 shadow-xl border-2 border-gray-200"
-            >
-              <Heart className="h-6 w-6 text-white" />
-            </Button>
-          </div>
-        </Tabs>
-      </div>
-    </div>
-  )
-}
-
-export default function DashboardPage() {
-  return (
-    <AuthGuard requireAuth={true} requireOnboarding={true}>
-      <FitnessDashboard />
-    </AuthGuard>
-  )
-}
+... (file continues)
