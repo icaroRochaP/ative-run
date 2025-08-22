@@ -45,3 +45,8 @@ Thumbs.db
 
 .rules
 .backlog
+
+# local BMAD and cursor folders + agents
+.bmad-core/
+.cursor/
+agents/
