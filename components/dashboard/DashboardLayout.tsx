@@ -11,6 +11,8 @@ import { WorkoutHistoryModal } from "@/components/dashboard/modals/WorkoutHistor
 import { WeightUpdateModal } from "@/components/dashboard/modals/WeightUpdateModal"
 import { WeeklyMealPlanModal } from "@/components/dashboard/modals/WeeklyMealPlanModal"
 import { MealDetailModal } from "@/components/dashboard/modals/MealDetailModal"
+import { ProfileModal } from "@/components/dashboard/modals/ProfileModal"
+import { PasswordChangeModal } from "@/components/password-change-modal"
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton"
 import { useDashboardData } from "@/hooks/dashboard/useDashboardData"
 import { useWeightTracking } from "@/hooks/dashboard/useWeightTracking"
@@ -35,6 +37,8 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     selectedMeal,
     showWeightUpdate,
     showWeeklyPlan,
+    showProfileModal,
+    showPasswordModal,
     selectedDay,
     currentHistoryPage,
     currentWeightPage,
@@ -49,6 +53,11 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     setCurrentHistoryPage,
     setCurrentWeightPage,
     handleLogout,
+    handleProfileUpdate,
+    handleOpenProfileModal,
+    handleCloseProfileModal,
+    handleOpenPasswordModal,
+    handleClosePasswordModal,
   } = useDashboardData()
 
   const {
@@ -64,6 +73,9 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     weeklyMealPlan,
     dailyNutrition,
     todayMeals,
+    loading: nutritionLoading,
+    error: nutritionError,
+    hasNoMealPlan,
   } = useMealPlan()
 
   // Activity stats (could be moved to a separate hook)
@@ -125,6 +137,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
               profile={profile}
               workoutsThisMonth={workoutsThisMonth}
               streakDays={streakDays}
+              onProfileClick={handleOpenProfileModal}
             />
           </TabsContent>
 
@@ -161,6 +174,9 @@ export function DashboardLayout(props: DashboardLayoutProps) {
               todayMeals={todayMeals}
               onMealSelect={setSelectedMeal}
               onShowWeeklyPlan={() => setShowWeeklyPlan(true)}
+              loading={nutritionLoading}
+              error={nutritionError}
+              hasNoMealPlan={hasNoMealPlan}
             />
           </TabsContent>
 
@@ -191,6 +207,21 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           <MealDetailModal
             meal={selectedMeal}
             onClose={() => setSelectedMeal(null)}
+          />
+
+          <ProfileModal
+            isOpen={showProfileModal}
+            onClose={handleCloseProfileModal}
+            user={user}
+            onProfileUpdate={handleProfileUpdate}
+            onPasswordChange={handleOpenPasswordModal}
+            onLogout={handleLogout}
+          />
+
+          <PasswordChangeModal
+            isOpen={showPasswordModal}
+            onPasswordChanged={handleClosePasswordModal}
+            onClose={handleClosePasswordModal}
           />
 
           {/* Floating Action Button */}

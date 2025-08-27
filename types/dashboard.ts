@@ -58,6 +58,11 @@ export interface Meal {
   carbs: string
   fat: string
   foods: string[]
+  // Additional fields for enhanced meal details
+  recipeId?: string
+  recipeName?: string
+  recipeDescription?: string
+  recipeImageUrl?: string
 }
 
 export interface DayMealPlan {
@@ -159,6 +164,7 @@ export interface ResumoTabProps {
   profile: any
   workoutsThisMonth: number
   streakDays: number
+  onProfileClick?: () => void
 }
 
 export interface TreinoTabProps {
@@ -189,6 +195,9 @@ export interface NutricaoTabProps {
   todayMeals: Meal[]
   onMealSelect: (meal: Meal) => void
   onShowWeeklyPlan: () => void
+  loading?: boolean
+  error?: string | null
+  hasNoMealPlan?: boolean
 }
 
 // Dashboard Context Interface

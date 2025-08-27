@@ -3,6 +3,7 @@
 import { createServerClient } from "@/lib/supabase-server"
 import { createAdminClient } from "@/lib/supabase-admin"
 import { createClient } from "@supabase/supabase-js"
+import { cookies } from "next/headers"
 import type { Database } from "@/lib/database.types"
 import type { OnboardingQuestion } from "@/lib/onboarding"
 
@@ -340,59 +341,123 @@ export async function updatePassword(prevState: any, formData: FormData) {
   return { success: "Your password has been updated successfully!", error: null }
 }
 
-export async function changePasswordAndMarkAccountActive(
-  userId: string,
-  currentPassword: string,
-  newPassword: string
-) {
-  console.log("🔐 Server Action: Starting changePasswordAndMarkAccountActive for userId:", userId)
+export async function testAuthSession() {
+  console.log("🧪 Test Auth Session: Starting")
   
   try {
     const supabase = await createServerClient()
     
+    // Debug: Check cookies
+    const cookieStore = await cookies()
+    console.log("🍪 Test Auth: Available cookies:", cookieStore.getAll().map((c: any) => c.name))
+    
     // Get current user to verify they are authenticated
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
+    console.log("👤 Test Auth: User data:", user ? { id: user.id, email: user.email } : "null")
+    console.log("❌ Test Auth: User error:", userError)
+    
     if (userError || !user) {
-      console.error("❌ Server Action: User not authenticated:", userError)
-      throw new Error("User not authenticated")
+      return { success: false, error: "Usuário não autenticado", details: userError }
+    }
+    
+    return { success: true, user: { id: user.id, email: user.email } }
+    
+  } catch (error) {
+    console.error("❌ Test Auth: Error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido"
+    return { success: false, error: errorMessage }
+  }
+}
+
+export async function changePasswordSimple(
+  userId: string,
+  currentPassword: string, 
+  newPassword: string
+) {
+  console.log("🔑 Simple Password Change: Starting for userId:", userId)
+  
+  try {
+    // Create admin client for password update
+    const supabaseAdmin = createAdminClient()
+    
+    // Create client for password verification
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      throw new Error("Configuração do Supabase não encontrada")
     }
 
-    // Update to new password directly (Supabase will handle current password validation internally)
-    const { error: updateError } = await supabase.auth.updateUser({ 
-      password: newPassword 
+    const tempSupabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    
+    // Get user profile to get email
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("users")
+      .select("email")
+      .eq("id", userId)
+      .single()
+
+    if (profileError) {
+      console.error("❌ Simple Password Change: Error fetching user profile:", profileError)
+      throw new Error("Erro ao buscar perfil do usuário")
+    }
+
+    console.log("📋 Simple Password Change: User profile found:", { email: profile.email })
+
+    // Verify current password by attempting to sign in
+    const { data: verifyData, error: verifyError } = await tempSupabase.auth.signInWithPassword({
+      email: profile.email,
+      password: currentPassword,
     })
 
-    if (updateError) {
-      console.error("❌ Server Action: Password update failed:", updateError)
-      // Common error codes from Supabase auth
-      if (updateError.message.includes("New password should be different")) {
-        throw new Error("New password must be different from current password")
-      } else if (updateError.message.includes("Password is too weak")) {
-        throw new Error("Password is too weak")
+    // Immediately sign out the temporary session
+    if (verifyData.session) {
+      await tempSupabase.auth.signOut()
+    }
+
+    if (verifyError) {
+      console.error("❌ Simple Password Change: Current password verification failed:", verifyError.message)
+      
+      if (verifyError.message.includes("Invalid login credentials")) {
+        throw new Error("Senha atual incorreta")
       } else {
-        throw new Error("Error updating password")
+        throw new Error("Erro na verificação da senha atual")
       }
     }
 
-    // Mark account as no longer new (new_account = false)
-    const { error: profileError } = await supabase
+    console.log("✅ Simple Password Change: Current password verified successfully")
+
+    // Update password using admin client
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: newPassword
+    })
+
+    if (updateError) {
+      console.error("❌ Simple Password Change: Password update failed:", updateError)
+      throw new Error("Erro ao atualizar senha: " + updateError.message)
+    }
+
+    console.log("✅ Simple Password Change: Password updated successfully")
+
+    // Mark account as no longer new using admin client
+    const { error: profileUpdateError } = await supabaseAdmin
       .from("users")
       .update({ 
         new_account: false
       })
       .eq("id", userId)
 
-    if (profileError) {
-      console.error("❌ Server Action: Profile update failed:", profileError)
-      throw new Error("Error updating profile")
+    if (profileUpdateError) {
+      console.error("❌ Simple Password Change: Profile update failed:", profileUpdateError)
+      console.warn("⚠️ Password changed but failed to update new_account flag")
+    } else {
+      console.log("✅ Simple Password Change: Profile updated - new_account set to false")
     }
 
-    console.log("✅ Server Action: Password changed and account marked as active for userId:", userId)
+    console.log("✅ Simple Password Change: Process completed for userId:", userId)
     return { success: true, error: null }
+    
   } catch (error) {
-    console.error("❌ Server Action: Error in changePasswordAndMarkAccountActive:", error)
-    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    console.error("❌ Simple Password Change: Error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido"
     return { success: false, error: errorMessage }
   }
 }

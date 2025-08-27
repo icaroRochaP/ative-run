@@ -14,7 +14,8 @@ export function ResumoTab({
   userData, 
   profile, 
   workoutsThisMonth, 
-  streakDays 
+  streakDays,
+  onProfileClick
 }: ResumoTabProps) {
   return (
     <div className="space-y-6">
@@ -24,6 +25,7 @@ export function ResumoTab({
         displayName={displayName}
         initials={initials}
         nameLoading={nameLoading}
+        onProfileClick={onProfileClick}
       />
 
       {/* Activity Stats */}

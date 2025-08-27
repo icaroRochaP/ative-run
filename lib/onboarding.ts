@@ -107,7 +107,7 @@ const fallbackQuestions: OnboardingQuestion[] = [
     id: "5",
     step_number: 4,
     question_type: "text",
-    title: "What's your current weight?",
+    title: "What&apos;s your current weight?",
     subtitle: 'Please specify in kg or lbs (e.g., "65 kg" or "145 lbs")',
     emoji: "⚖️",
     icon: null,
@@ -125,8 +125,8 @@ const fallbackQuestions: OnboardingQuestion[] = [
     id: "6",
     step_number: 5,
     question_type: "text",
-    title: "What's your current height?",
-    subtitle: 'Please specify in cm or feet/inches (e.g., "170 cm" or "5\'7")',
+    title: "What&apos;s your current height?",
+    subtitle: 'Please specify in cm or feet/inches (e.g., "170 cm" or "5&apos;7")',
     emoji: "📏",
     icon: null,
     field_name: "height",
@@ -143,7 +143,7 @@ const fallbackQuestions: OnboardingQuestion[] = [
     id: "7",
     step_number: 6,
     question_type: "radio",
-    title: "What's your primary goal?",
+    title: "What&apos;s your primary goal?",
     subtitle: "Be specific about what you want to achieve",
     emoji: null,
     icon: "Target",
@@ -310,14 +310,90 @@ export const shouldShowQuestion = (question: OnboardingQuestion, allResponses: R
   return true
 }
 
+// Questions que devem ser checkbox (permitem múltiplas seleções)
+const MULTI_SELECT_QUESTIONS = ['equipment', 'goals', 'workout_preferences', 'primaryGoal'] // field_names que permitem múltiplas seleções
+
+// Função helper para detectar se question permite múltiplas seleções
+export const isMultiSelectQuestion = (fieldName: string): boolean => {
+  return MULTI_SELECT_QUESTIONS.includes(fieldName)
+}
+
 export const validateResponse = (
   question: OnboardingQuestion,
   value: string | string[] | null,
+  allResponses?: Record<string, any> // Adicionar parâmetro para acessar todas as respostas
 ): { isValid: boolean; error?: string } => {
   // Check if required
   if (question.required) {
     if (!value || (Array.isArray(value) && value.length === 0)) {
       return { isValid: false, error: "This field is required" }
+    }
+  }
+
+  // Validação específica para textarea obrigatória
+  if (question.question_type === "textarea" && question.required && typeof value === "string") {
+    const textValue = value.trim()
+    if (textValue.length === 0) {
+      return { isValid: false, error: "Este campo é obrigatório" }
+    }
+  }
+
+  // Validação específica para idade
+  if (question.field_name === "age" && typeof value === "string") {
+    const ageValue = value.trim()
+    
+    // Verificar se contém apenas números
+    if (!/^[0-9]+$/.test(ageValue)) {
+      return { isValid: false, error: "Idade deve conter apenas números" }
+    }
+    
+    // Verificar se tem 1-2 caracteres
+    if (ageValue.length === 0 || ageValue.length > 2) {
+      return { isValid: false, error: "Idade deve ter 1 ou 2 dígitos" }
+    }
+    
+    const numValue = Number(ageValue)
+    
+    // Verificar limites mínimo e máximo
+    if (numValue < 1 || numValue > 99) {
+      return { isValid: false, error: "Idade deve estar entre 01 e 99 anos" }
+    }
+  }
+
+  // Nova validação para campos "outro" selecionados
+  if (question.required && Array.isArray(value)) {
+    // Verificar se "outro" está selecionado mas não especificado
+    const hasOtherSelected = value.some(item => 
+      item.toLowerCase().includes('other') || item.toLowerCase().includes('outro')
+    )
+    
+    if (hasOtherSelected && allResponses) {
+      // Procurar campos "outro" relacionados que estão vazios
+      const otherKeys = Object.keys(allResponses).filter(key => 
+        key.startsWith(`${question.field_name}_other`)
+      )
+      
+      const hasEmptyOther = otherKeys.some(key => 
+        !allResponses[key] || allResponses[key].trim().length === 0
+      )
+      
+      if (hasEmptyOther) {
+        return { isValid: false, error: "Por favor, especifique a opção 'Outro'" }
+      }
+    }
+  }
+  
+  // Para radio buttons com "outro"
+  if (question.required && typeof value === "string") {
+    const isOtherSelected = value.toLowerCase().includes('other') || value.toLowerCase().includes('outro')
+    
+    if (isOtherSelected && allResponses) {
+      const otherKey = `${question.field_name}_other`
+      const otherValue = allResponses[otherKey]
+      
+      if (!otherValue || otherValue.trim().length === 0) {
+        return { isValid: false, error: "Por favor, especifique a opção 'Outro'" }
+      }
     }
   }
 

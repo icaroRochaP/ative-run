@@ -20,6 +20,8 @@ export function useDashboardData() {
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null)
   const [showWeightUpdate, setShowWeightUpdate] = useState(false)
   const [showWeeklyPlan, setShowWeeklyPlan] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [selectedDay, setSelectedDay] = useState("monday")
   
   // Pagination
@@ -27,7 +29,7 @@ export function useDashboardData() {
   const [currentWeightPage, setCurrentWeightPage] = useState(0)
   
   const router = useRouter()
-  const { profile, loading: authLoading } = useAuth()
+  const { profile, loading: authLoading, refreshProfile } = useAuth()
 
   // Load user data from localStorage
   useEffect(() => {
@@ -177,13 +179,94 @@ export function useDashboardData() {
 
   const handleLogout = async () => {
     try {
+      console.log("🚪 Starting logout process...")
       const supabase = getSupabaseClient()
-      await supabase.auth.signOut()
+      
+      // Clear localStorage first
+      localStorage.removeItem("onboardingData")
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error("❌ Logout error:", error)
+        // Even if there's an error, we should still redirect
+      } else {
+        console.log("✅ Logout successful")
+      }
+      
     } catch (err) {
-      console.error("Logout error:", err)
+      console.error("❌ Logout error:", err)
     } finally {
-      router.push('/auth/signin')
+      // Always redirect to signin, regardless of errors
+      console.log("🔄 Redirecting to signin...")
+      window.location.href = '/auth/signin'
     }
+  }
+
+  const handleProfileUpdate = async (newName: string) => {
+    try {
+      const supabase = getSupabaseClient()
+      
+      if (!profile?.id) {
+        throw new Error("Perfil do usuário não encontrado")
+      }
+      
+      console.log("🔄 Updating user profile:", { userId: profile.id, newName })
+      
+      // Update profile in Supabase users table (not profiles)
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          name: newName
+        })
+        .eq('id', profile.id)
+      
+      if (error) {
+        console.error("❌ Error updating user name:", error)
+        throw error
+      }
+
+      console.log("✅ User name updated successfully")
+
+      // Update localStorage if exists
+      const savedData = localStorage.getItem("onboardingData")
+      if (savedData) {
+        const data = JSON.parse(savedData)
+        data.name = newName
+        localStorage.setItem("onboardingData", JSON.stringify(data))
+        setUserData(data)
+      }
+
+      // Force recompute of display name
+      setDisplayName(newName)
+      setInitials(newName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2))
+      
+      // Refresh the profile from AuthProvider to sync state
+      if (refreshProfile) {
+        await refreshProfile()
+      }
+      
+    } catch (error) {
+      console.error("❌ Error updating profile:", error)
+      throw error
+    }
+  }
+
+  const handleOpenProfileModal = () => {
+    setShowProfileModal(true)
+  }
+
+  const handleCloseProfileModal = () => {
+    setShowProfileModal(false)
+  }
+
+  const handleOpenPasswordModal = () => {
+    setShowPasswordModal(true)
+  }
+
+  const handleClosePasswordModal = () => {
+    setShowPasswordModal(false)
   }
 
   return {
@@ -201,6 +284,8 @@ export function useDashboardData() {
     selectedMeal,
     showWeightUpdate,
     showWeeklyPlan,
+    showProfileModal,
+    showPasswordModal,
     selectedDay,
     currentHistoryPage,
     currentWeightPage,
@@ -217,5 +302,10 @@ export function useDashboardData() {
     setCurrentHistoryPage,
     setCurrentWeightPage,
     handleLogout,
+    handleProfileUpdate,
+    handleOpenProfileModal,
+    handleCloseProfileModal,
+    handleOpenPasswordModal,
+    handleClosePasswordModal,
   }
 }

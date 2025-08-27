@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { MealPlan, Meal } from "@/types/dashboard"
+import { useNutrition } from "@/hooks/nutrition/useNutrition"
+import { MealPlan } from "@/types/dashboard"
 
 export function useMealPlan() {
+  const { todayMeals, dailyNutrition, loading, error, hasNoMealPlan } = useNutrition()
+
+  // Fallback weekly meal plan for the modal (this will remain static until we implement weekly view)
   const weeklyMealPlan: MealPlan = {
     monday: {
       day: "Monday",
@@ -217,20 +220,12 @@ export function useMealPlan() {
     },
   }
 
-  // Daily nutrition goals
-  const dailyNutrition = {
-    calories: 1450,
-    protein: 120,
-    carbs: 150,
-    fat: 70,
-  }
-
-  // Today's meals (Monday by default)
-  const todayMeals = weeklyMealPlan.monday.meals
-
   return {
     weeklyMealPlan,
     dailyNutrition,
     todayMeals,
+    loading,
+    error,
+    hasNoMealPlan,
   }
 }

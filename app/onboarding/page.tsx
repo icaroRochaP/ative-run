@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import React, { useState, useEffect, useCallback } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,7 +27,6 @@ import {
   Mail,
   Eye,
   EyeOff,
-  Phone,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
@@ -38,6 +37,7 @@ import {
   // Removed saveResponseAndUpdateProfile from here
   shouldShowQuestion,
   validateResponse,
+  isMultiSelectQuestion, // Importar função helper
   type OnboardingQuestion,
 } from "@/lib/onboarding"
 import { useAuth } from "@/components/auth-provider"
@@ -457,7 +457,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
     if (!currentQuestion) return
 
     const value = responses[currentQuestion.field_name]
-    const validation = validateResponse(currentQuestion, value)
+    const validation = validateResponse(currentQuestion, value, responses) // Passar todas as respostas
 
     if (!validation.isValid) {
       setErrors((prev) => ({
@@ -472,6 +472,24 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
       const password = responses.password
       const phone = responses.phone
       
+      if (!phone || phone.trim().length === 0) {
+        setErrors((prev) => ({
+          ...prev,
+          phone: "Número de telefone é obrigatório",
+        }))
+        return
+      }
+      
+      // Validar formato do telefone
+      const phoneDigits = phone.replace(/\D/g, '')
+      if (phoneDigits.length < 10) {
+        setErrors((prev) => ({
+          ...prev,
+          phone: "Por favor, insira um número de telefone válido",
+        }))
+        return
+      }
+      
       if (!password) {
         setErrors((prev) => ({
           ...prev,
@@ -483,24 +501,6 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
         setErrors((prev) => ({
           ...prev,
           password: "Password must be at least 6 characters long",
-        }))
-        return
-      }
-      
-      if (!phone) {
-        setErrors((prev) => ({
-          ...prev,
-          phone: "Phone number is required",
-        }))
-        return
-      }
-      
-      // Validar se o telefone tem pelo menos 10 dígitos (formato internacional)
-      const phoneDigits = phone.replace(/\D/g, '')
-      if (phoneDigits.length < 10) {
-        setErrors((prev) => ({
-          ...prev,
-          phone: "Please enter a valid phone number",
         }))
         return
       }
@@ -628,6 +628,9 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
   const prevStep = () => {
     if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1)
+    } else {
+      // Se estiver no primeiro step, volta para a tela de boas-vindas
+      setIsStarted(false)
     }
   }
 
@@ -680,12 +683,16 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
     if (!currentQuestion) return true
 
     const value = responses[currentQuestion.field_name]
-    const validation = validateResponse(currentQuestion, value)
+    const validation = validateResponse(currentQuestion, value, responses) // Passar todas as respostas
 
     // Validação adicional para senha quando for questão de email
     if (currentQuestion.field_name === "email") {
       const password = responses.password
+      const phone = responses.phone
       if (!password || password.length < 6) {
+        return false
+      }
+      if (!phone || phone.trim().length === 0) {
         return false
       }
     }
@@ -705,7 +712,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
           {question.emoji ? (
             <div className="text-4xl mb-4">{question.emoji}</div>
           ) : IconComponent ? (
-            <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-aleen-primary to-aleen-secondary rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
               <IconComponent className="h-8 w-8 text-white" />
             </div>
           ) : null}
@@ -715,7 +722,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
           {/* Mostrar status especial para pergunta do email */}
           {isEmailQuestion && !userCreated && isConfigured && (
             <div className="mt-4">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              <Badge variant="secondary" className="bg-aleen-light text-aleen-primary border border-aleen-primary/20 rounded-xl">
                 <Mail className="h-3 w-3 mr-1" />
                 Your account will be created after this step
               </Badge>
@@ -725,7 +732,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
           {/* Mostrar status de salvamento após usuário criado */}
           {userCreated && isConfigured && (
             <div className="mt-2">
-              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs rounded-xl">
                 <UserPlus className="h-3 w-3 mr-1" />
                 Account created - Auto-saving responses
               </Badge>
@@ -744,7 +751,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                 value={value || ""}
                 onChange={(e) => updateResponse(question.field_name, e.target.value)}
                 placeholder={question.placeholder || ""}
-                className={`border-2 ${error ? "border-red-500" : "border-gray-200"} focus:border-black text-black placeholder:text-gray-400 py-3`}
+                className={`border-2 ${error ? "border-red-500" : "border-aleen-light"} focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 py-3 transition-all duration-300 focus:shadow-lg`}
               />
               {error && <p className="text-red-500 text-sm">{error}</p>}
             </>
@@ -757,11 +764,28 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
               </Label>
               <Input
                 id={question.field_name}
-                type="number"
+                type={question.field_name === "age" ? "text" : "number"}
+                maxLength={question.field_name === "age" ? 2 : undefined}
                 value={value || ""}
-                onChange={(e) => updateResponse(question.field_name, e.target.value)}
+                onChange={(e) => {
+                  if (question.field_name === "age") {
+                    // Permitir apenas números e máximo 2 caracteres para idade
+                    const numericValue = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
+                    updateResponse(question.field_name, numericValue)
+                  } else {
+                    updateResponse(question.field_name, e.target.value)
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (question.field_name === "age") {
+                    // Bloquear teclas não numéricas para idade
+                    if (!/[0-9]/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab') {
+                      e.preventDefault()
+                    }
+                  }
+                }}
                 placeholder={question.placeholder || ""}
-                className={`border-2 ${error ? "border-red-500" : "border-gray-200"} focus:border-black text-black placeholder:text-gray-400 py-3`}
+                className={`border-2 ${error ? "border-red-500" : "border-aleen-light"} focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 py-3 transition-all duration-300 focus:shadow-lg ${question.field_name === "age" ? "text-center" : ""}`}
               />
               {error && <p className="text-red-500 text-sm">{error}</p>}
             </>
@@ -778,7 +802,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                 value={value || ""}
                 onChange={(e) => updateResponse(question.field_name, e.target.value)}
                 placeholder={question.placeholder || ""}
-                className={`border-2 ${error ? "border-red-500" : "border-gray-200"} focus:border-black text-black placeholder:text-gray-400 py-3`}
+                className={`border-2 ${error ? "border-red-500" : "border-aleen-light"} focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 py-3 transition-all duration-300 focus:shadow-lg`}
               />
               
               {/* Campo de telefone para questões de email */}
@@ -793,18 +817,33 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                     defaultCountry="BR"
                     value={responses.phone || ""}
                     onChange={(value) => updateResponse("phone", value || "")}
-                    className={`w-full border-2 ${errors.phone ? "border-red-500" : "border-gray-200"} rounded-md focus:border-black text-black bg-white`}
+                    className={`w-full border-2 ${errors.phone ? "border-red-500" : "border-aleen-light"} rounded-2xl focus:border-aleen-primary text-black bg-white overflow-hidden`}
                     style={{
-                      '--PhoneInputCountryFlag-height': '1em',
+                      '--PhoneInputCountryFlag-height': '1.2em',
+                      '--PhoneInputCountryFlag-borderRadius': '50%', // Bandeira redonda
                       '--PhoneInputCountryFlag-borderColor': 'transparent',
                       '--PhoneInputCountrySelectArrow-color': '#6b7280',
                       '--PhoneInput-color--focus': '#000000',
                     } as any}
-                    inputComponent={Input}
-                    numberInputProps={{
-                      className: "border-0 bg-transparent focus:ring-0 focus:border-0 pl-2",
-                      style: { outline: 'none', boxShadow: 'none' }
-                    }}
+                    inputComponent={({ className, ...props }) => (
+                      <Input
+                        {...props}
+                        className="border-0 bg-transparent focus:ring-0 focus:border-0 pl-12 py-3 rounded-2xl"
+                        style={{ outline: 'none', boxShadow: 'none' }}
+                      />
+                    )}
+                    flagComponent={({ country, flagUrl, ...props }) => (
+                      <div 
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full overflow-hidden border border-gray-200"
+                        {...props}
+                      >
+                        <img 
+                          src={flagUrl} 
+                          alt={`${country} flag`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
                   />
                 </div>
                 {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
@@ -822,7 +861,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                     value={responses.password || ""}
                     onChange={(e) => updateResponse("password", e.target.value)}
                     placeholder="Enter a secure password"
-                    className={`border-2 ${errors.password ? "border-red-500" : "border-gray-200"} focus:border-black text-black placeholder:text-gray-400 py-3 pr-12`}
+                    className={`border-2 ${errors.password ? "border-red-500" : "border-aleen-light"} focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 py-3 pr-12 transition-all duration-300 focus:shadow-lg`}
                   />
                   <button
                     type="button"
@@ -859,38 +898,133 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                 value={value || ""}
                 onChange={(e) => updateResponse(question.field_name, e.target.value)}
                 placeholder={question.placeholder || ""}
-                className={`border-2 ${error ? "border-red-500" : "border-gray-200"} focus:border-black text-black placeholder:text-gray-400 min-h-[120px]`}
+                className={`border-2 ${error ? "border-red-500" : "border-aleen-light"} focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 min-h-[120px] transition-all duration-300 focus:shadow-lg`}
               />
               {error && <p className="text-red-500 text-sm">{error}</p>}
             </>
           )}
 
           {question.question_type === "radio" && question.options && (
-            <RadioGroup value={value || ""} onValueChange={(newValue) => updateResponse(question.field_name, newValue)}>
-              <div className="space-y-3">
-                {/* Fix: Access the options array correctly */}
-                {(() => {
-                  let optionsArray: string[] = [];
-                  if (Array.isArray(question.options)) {
-                    optionsArray = question.options;
-                  } else if (question.options && typeof question.options === 'object' && 'options' in question.options) {
-                    optionsArray = Array.isArray((question.options as any).options) ? (question.options as any).options : [];
-                  }
-                  return optionsArray.map((option: string) => (
-                    <div
-                      key={option}
-                      className={`flex items-center space-x-3 p-4 border-2 ${error ? "border-red-500" : "border-gray-200"} rounded-lg hover:border-gray-300 transition-colors`}
-                    >
-                      <RadioGroupItem value={option.toLowerCase()} id={option} className="border-2 border-gray-400" />
-                      <Label htmlFor={option} className="text-black cursor-pointer flex-1 font-medium">
-                        {option}
-                      </Label>
-                    </div>
-                  ));
-                })()}
-              </div>
-              {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
-            </RadioGroup>
+            <>
+              {isMultiSelectQuestion(question.field_name) ? (
+                // CHECKBOX para seleção múltipla
+                <div className="space-y-3">
+                  {(() => {
+                    let optionsArray: string[] = [];
+                    if (Array.isArray(question.options)) {
+                      optionsArray = question.options;
+                    } else if (question.options && typeof question.options === 'object' && 'options' in question.options) {
+                      optionsArray = Array.isArray((question.options as any).options) ? (question.options as any).options : [];
+                    }
+                    
+                    return optionsArray.map((option: string, index: number) => {
+                      const isSelected = ((value as string[]) || []).includes(option)
+                      const isOtherOption = option.toLowerCase().includes('other') || option.toLowerCase().includes('outro')
+                      const otherInputKey = `${question.field_name}_other_${index}`
+                      const otherValue = responses[otherInputKey] || ''
+                      
+                      return (
+                        <div key={option} className="space-y-2">
+                          <div
+                            className={`flex items-center space-x-3 p-4 border-2 cursor-pointer transition-all duration-300 hover:shadow-lg rounded-2xl ${
+                              isSelected 
+                                ? "border-aleen-primary bg-aleen-light/10" 
+                                : error ? "border-red-500" : "border-aleen-light hover:border-aleen-primary"
+                            }`}
+                            onClick={() => handleArrayUpdate(question.field_name, option, !isSelected)}
+                          >
+                            <Checkbox
+                              id={`${question.field_name}_${index}`}
+                              checked={isSelected}
+                              onCheckedChange={(checked) => handleArrayUpdate(question.field_name, option, checked as boolean)}
+                              className="border-2 border-aleen-secondary rounded-md" // Bordas arredondadas, não círculo
+                            />
+                            <Label 
+                              htmlFor={`${question.field_name}_${index}`} 
+                              className="text-black cursor-pointer flex-1 font-medium"
+                            >
+                              {option}
+                            </Label>
+                          </div>
+                          
+                          {/* Input para "Outro" quando selecionado */}
+                          {isOtherOption && isSelected && (
+                            <div className="ml-10 mt-2">
+                              <Input
+                                placeholder="Especifique..."
+                                value={otherValue}
+                                onChange={(e) => updateResponse(otherInputKey, e.target.value)}
+                                className="border-2 border-aleen-light focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 py-2"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    });
+                  })()}
+                  {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                </div>
+              ) : (
+                // RADIO para seleção única (mantém comportamento atual)
+                <RadioGroup value={value || ""} onValueChange={(newValue) => updateResponse(question.field_name, newValue)}>
+                  <div className="space-y-3">
+                    {(() => {
+                      let optionsArray: string[] = [];
+                      if (Array.isArray(question.options)) {
+                        optionsArray = question.options;
+                      } else if (question.options && typeof question.options === 'object' && 'options' in question.options) {
+                        optionsArray = Array.isArray((question.options as any).options) ? (question.options as any).options : [];
+                      }
+                      
+                      return optionsArray.map((option: string, index: number) => {
+                        const isSelected = value === option.toLowerCase()
+                        const isOtherOption = option.toLowerCase().includes('other') || option.toLowerCase().includes('outro')
+                        const otherInputKey = `${question.field_name}_other`
+                        const otherValue = responses[otherInputKey] || ''
+                        
+                        return (
+                          <div key={option} className="space-y-2">
+                            <div
+                              className={`flex items-center space-x-3 p-4 border-2 cursor-pointer transition-all duration-300 hover:shadow-lg rounded-2xl ${
+                                isSelected 
+                                  ? "border-aleen-primary bg-aleen-light/10" 
+                                  : error ? "border-red-500" : "border-aleen-light hover:border-aleen-primary"
+                              }`}
+                              onClick={() => updateResponse(question.field_name, option.toLowerCase())}
+                            >
+                              <RadioGroupItem 
+                                value={option.toLowerCase()} 
+                                id={`${question.field_name}_${index}`}
+                                className="border-2 border-aleen-secondary" 
+                              />
+                              <Label 
+                                htmlFor={`${question.field_name}_${index}`}
+                                className="text-black cursor-pointer flex-1 font-medium"
+                              >
+                                {option}
+                              </Label>
+                            </div>
+                            
+                            {/* Input para "Outro" quando selecionado */}
+                            {isOtherOption && isSelected && (
+                              <div className="ml-10 mt-2">
+                                <Input
+                                  placeholder="Especifique..."
+                                  value={otherValue}
+                                  onChange={(e) => updateResponse(otherInputKey, e.target.value)}
+                                  className="border-2 border-aleen-light focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 py-2"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      });
+                    })()}
+                  </div>
+                  {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                </RadioGroup>
+              )}
+            </>
           )}
 
           {question.question_type === "checkbox" && question.options && (
@@ -902,22 +1036,50 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                 } else if (question.options && typeof question.options === 'object' && 'options' in question.options) {
                   optionsArray = Array.isArray((question.options as any).options) ? (question.options as any).options : [];
                 }
-                return optionsArray.map((option: string) => (
-                  <div
-                    key={option}
-                    className={`flex items-center space-x-3 p-4 border-2 ${error ? "border-red-500" : "border-gray-200"} rounded-lg hover:border-gray-300 transition-colors`}
-                  >
-                    <Checkbox
-                      id={option}
-                      checked={((value as string[]) || []).includes(option)}
-                      onCheckedChange={(checked) => handleArrayUpdate(question.field_name, option, checked as boolean)}
-                      className="border-2 border-gray-400"
-                    />
-                    <Label htmlFor={option} className="text-black cursor-pointer flex-1 font-medium">
-                      {option}
-                    </Label>
-                  </div>
-                ));
+                return optionsArray.map((option: string, index: number) => {
+                  const isSelected = ((value as string[]) || []).includes(option)
+                  const isOtherOption = option.toLowerCase().includes('other') || option.toLowerCase().includes('outro')
+                  const otherInputKey = `${question.field_name}_other_${index}`
+                  const otherValue = responses[otherInputKey] || ''
+                  
+                  return (
+                    <div key={option} className="space-y-2">
+                      <div
+                        className={`flex items-center space-x-3 p-4 border-2 cursor-pointer transition-all duration-300 hover:shadow-lg rounded-2xl ${
+                          isSelected 
+                            ? "border-aleen-primary bg-aleen-light/10" 
+                            : error ? "border-red-500" : "border-aleen-light hover:border-aleen-primary"
+                        }`}
+                        onClick={() => handleArrayUpdate(question.field_name, option, !isSelected)}
+                      >
+                        <Checkbox
+                          id={`${question.field_name}_${index}`}
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleArrayUpdate(question.field_name, option, checked as boolean)}
+                          className="border-2 border-aleen-secondary rounded-md"
+                        />
+                        <Label 
+                          htmlFor={`${question.field_name}_${index}`} 
+                          className="text-black cursor-pointer flex-1 font-medium"
+                        >
+                          {option}
+                        </Label>
+                      </div>
+                      
+                      {/* Input para "Outro" quando selecionado */}
+                      {isOtherOption && isSelected && (
+                        <div className="ml-10 mt-2">
+                          <Input
+                            placeholder="Especifique..."
+                            value={otherValue}
+                            onChange={(e) => updateResponse(otherInputKey, e.target.value)}
+                            className="border-2 border-aleen-light focus:border-aleen-primary rounded-2xl text-black placeholder:text-gray-400 py-2"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                });
               })()}
               {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
             </div>
@@ -929,7 +1091,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-aleen-light to-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-4 border-aleen-light/40 border-t-4 border-t-aleen-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">
@@ -945,20 +1107,21 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
     const isUuidAccess = userIdFromPath && currentUser?.id === userIdFromPath
 
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-white border-2 border-gray-200 shadow-2xl">
+      <div className="min-h-screen bg-gradient-to-br from-aleen-light to-white flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-white border-0 shadow-2xl rounded-3xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-aleen-primary to-aleen-secondary text-white p-8">
+            <div className="text-center">
+              <img src="/placeholder-logo.png" alt="Aleen.ai Logo" className="h-12 mx-auto mb-0" />
+            </div>
+          </CardHeader>
           <CardContent className="p-8 text-center">
             <div className="mb-8">
-              <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Heart className="h-10 w-10 text-white" />
-              </div>
-              
               {isUuidAccess ? (
                 <>
                   <h1 className="text-3xl font-bold text-black mb-3">Welcome back!</h1>
                   <p className="text-gray-600 text-lg">Continue your personalized fitness questionnaire</p>
                   <div className="mt-4">
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    <Badge variant="secondary" className="bg-aleen-light text-aleen-primary border border-aleen-primary/20 rounded-xl">
                       <Heart className="h-3 w-3 mr-1" />
                       Progress automatically saved
                     </Badge>
@@ -966,11 +1129,11 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                 </>
               ) : (
                 <>
-                  <h1 className="text-3xl font-bold text-black mb-3">Welcome to FitJourney</h1>
+                  <h1 className="text-3xl font-bold text-black mb-3">Welcome to Aleen.ai</h1>
                   <p className="text-gray-600 text-lg">Let's create your personalized fitness plan together</p>
                   {isConfigured && (
                     <div className="mt-4">
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      <Badge variant="secondary" className="bg-aleen-light text-aleen-primary border border-aleen-primary/20 rounded-xl">
                         <Mail className="h-3 w-3 mr-1" />
                         Account created after email step
                       </Badge>
@@ -983,7 +1146,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
             <div className="space-y-4">
               <Button
                 onClick={() => setIsStarted(true)}
-                className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-4 text-lg shadow-lg transition-all duration-200 hover:shadow-xl"
+                className="w-full bg-gradient-to-r from-aleen-primary to-aleen-secondary hover:from-aleen-secondary hover:to-aleen-primary text-white font-bold py-4 text-lg rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 transform"
               >
                 <Sparkles className="mr-2 h-5 w-5" />
                 {isUuidAccess ? "Continue Questionnaire" : "I am new - Let's start!"}
@@ -993,7 +1156,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                 <Button
                   onClick={handleExistingAccount}
                   variant="outline"
-                  className="w-full border-2 border-gray-300 text-black hover:bg-gray-50 py-4 text-lg transition-all duration-200 bg-transparent"
+                  className="w-full border-2 border-aleen-light text-aleen-primary hover:bg-aleen-light/20 py-4 text-lg rounded-2xl transition-all duration-300 bg-transparent"
                 >
                   I already have an account
                 </Button>
@@ -1011,13 +1174,19 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
     const isUuidUserNotAuthenticated = userIdFromPath && !user
 
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-aleen-light to-white p-4">
         <div className="container mx-auto max-w-md">
-          <Card className="bg-white border-2 border-gray-200 shadow-lg">
-            <CardContent className="p-8 text-center space-y-6">
-              <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="h-10 w-10 text-white" />
+          <Card className="bg-white border-0 shadow-2xl rounded-3xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-aleen-primary to-aleen-secondary text-white p-8">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-10 w-10 text-white" />
+                </div>
+                <CardTitle className="text-2xl font-bold text-white">Congratulations!</CardTitle>
+                <CardDescription className="text-aleen-light">You've completed your fitness profile</CardDescription>
               </div>
+            </CardHeader>
+            <CardContent className="p-8 text-center space-y-6">
               
               {isUuidUserNotAuthenticated ? (
                 <>
@@ -1031,7 +1200,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                   <div className="space-y-4">
                     <Button
                       onClick={handleCompleteOnboarding}
-                      className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-4 text-lg shadow-lg"
+                      className="w-full bg-gradient-to-r from-aleen-primary to-aleen-secondary hover:from-aleen-secondary hover:to-aleen-primary text-white font-bold py-4 text-lg rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 transform"
                     >
                       <Mail className="mr-2 h-5 w-5" />
                       Sign In to Access Platform
@@ -1053,7 +1222,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                   <div className="space-y-4">
                     <Button
                       onClick={handleCompleteOnboarding}
-                      className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-4 text-lg shadow-lg"
+                      className="w-full bg-gradient-to-r from-aleen-primary to-aleen-secondary hover:from-aleen-secondary hover:to-aleen-primary text-white font-bold py-4 text-lg rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 transform"
                     >
                       <Zap className="mr-2 h-5 w-5" />
                       Start My Journey
@@ -1073,7 +1242,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
   const currentQuestion = visibleQuestions[currentStep]
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-aleen-light to-white p-4">
       <div className="container mx-auto max-w-md">
         {/* Progress Bar */}
         <div className="mb-8">
@@ -1083,12 +1252,12 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="bg-black h-2 rounded-full transition-all duration-300 ease-out"
+              className="bg-gradient-to-r from-aleen-primary to-aleen-secondary h-2 rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
           <div className="flex justify-between items-center mt-3">
-            <Badge variant="secondary" className="bg-black text-white">
+            <Badge variant="secondary" className="bg-gradient-to-r from-aleen-primary to-aleen-secondary text-white rounded-xl">
               Step {currentStep + 1} of {visibleQuestions.length}
             </Badge>
             <span className="text-gray-500 text-xs">{visibleQuestions.length - currentStep - 1} questions left</span>
@@ -1096,26 +1265,30 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
         </div>
 
         {/* Main Card */}
-        <Card className="bg-white border-2 border-gray-200 shadow-lg mb-8">
+        <Card className="bg-white border-0 shadow-2xl rounded-3xl mb-8">
           <CardContent className="p-8">{currentQuestion && renderQuestion(currentQuestion)}</CardContent>
         </Card>
 
         {/* Navigation */}
         <div className="flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={prevStep}
-            disabled={currentStep === 0}
-            className="border-2 border-gray-300 text-black hover:bg-gray-50 disabled:opacity-50 bg-transparent"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
+          {/* Mostrar botão Back apenas antes da criação da conta OU se for step 0 */}
+          {(currentStep === 0 || (!userCreated && currentStep <= 2)) ? (
+            <Button
+              variant="outline"
+              onClick={prevStep}
+              className="border-2 border-aleen-light text-aleen-primary hover:bg-aleen-light/20 bg-transparent rounded-2xl transition-all duration-300"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          ) : (
+            <div></div> // Espaço vazio para manter layout
+          )}
 
           <Button
             onClick={nextStep}
             disabled={!canProceed()}
-            className="bg-black hover:bg-gray-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gradient-to-r from-aleen-primary to-aleen-secondary hover:from-aleen-secondary hover:to-aleen-primary text-white font-bold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-xl hover:scale-105 transform"
           >
             {currentStep === visibleQuestions.length - 1 ? "Complete" : "Next"}
             <ArrowRight className="ml-2 h-4 w-4" />
