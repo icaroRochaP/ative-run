@@ -4,11 +4,24 @@ import { Separator } from "@/components/ui/separator"
 import { Clock, ChefHat, Utensils } from "lucide-react"
 import { MealDetailModalProps } from "@/types/dashboard"
 import { useRecipeDetails } from "@/hooks/nutrition/useRecipeDetails"
+import { useMealConsumption } from "@/hooks/nutrition/useMealConsumptionGlobal"
 
 export function MealDetailModal({ meal, onClose, onMarkConsumed }: MealDetailModalProps) {
   const { data: recipeDetails, loading, error } = useRecipeDetails(meal?.recipeId || null)
+  
+  // Get current date for meal consumption tracking
+  const currentDate = new Date().toISOString().split('T')[0]
+  
+  // Use the meal consumption hook to get real-time consumption state
+  const { isMealConsumed } = useMealConsumption(currentDate)
+  
+  // Create updated meal object with current consumption state
+  const updatedMeal = meal ? {
+    ...meal,
+    isConsumed: isMealConsumed(meal.recipeId || '')
+  } : null
 
-  if (!meal) return null
+  if (!updatedMeal) return null
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-50 overflow-y-auto">
@@ -17,7 +30,7 @@ export function MealDetailModal({ meal, onClose, onMarkConsumed }: MealDetailMod
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <ChefHat className="h-5 w-5" />
-              <CardTitle className="text-white text-lg">{meal.meal}</CardTitle>
+              <CardTitle className="text-white text-lg">{updatedMeal.meal}</CardTitle>
             </div>
             <Button
               variant="ghost"
@@ -34,7 +47,7 @@ export function MealDetailModal({ meal, onClose, onMarkConsumed }: MealDetailMod
           {/* Recipe Header */}
           <div className="text-center space-y-3">
             <h2 className="text-2xl font-bold text-gray-800">
-              {recipeDetails?.name || meal.recipeName || 'Carregando...'}
+              {recipeDetails?.name || updatedMeal.recipeName || 'Carregando...'}
             </h2>
             {recipeDetails?.image_url && (
               <div className="w-full h-32 bg-gradient-to-br from-aleen-light to-aleen-secondary/20 rounded-2xl flex items-center justify-center">
@@ -55,20 +68,20 @@ export function MealDetailModal({ meal, onClose, onMarkConsumed }: MealDetailMod
           <div className="bg-gradient-to-r from-aleen-light/30 to-aleen-primary/10 rounded-2xl p-4 border border-aleen-primary/20">
             <div className="flex items-center justify-between">
               <div className="text-center">
-                <div className="text-2xl font-bold text-aleen-primary">{meal.calories}</div>
+                <div className="text-2xl font-bold text-aleen-primary">{updatedMeal.calories}</div>
                 <div className="text-xs text-gray-600 font-medium">Calorias</div>
               </div>
               <div className="flex space-x-4">
                 <div className="text-center">
-                  <div className="text-lg font-bold text-aleen-secondary">{meal.protein}</div>
+                  <div className="text-lg font-bold text-aleen-secondary">{updatedMeal.protein}</div>
                   <div className="text-xs text-gray-600">Proteína</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-aleen-secondary">{meal.carbs}</div>
+                  <div className="text-lg font-bold text-aleen-secondary">{updatedMeal.carbs}</div>
                   <div className="text-xs text-gray-600">Carboidratos</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-aleen-secondary">{meal.fat}</div>
+                  <div className="text-lg font-bold text-aleen-secondary">{updatedMeal.fat}</div>
                   <div className="text-xs text-gray-600">Gordura</div>
                 </div>
               </div>
@@ -76,7 +89,7 @@ export function MealDetailModal({ meal, onClose, onMarkConsumed }: MealDetailMod
           </div>
 
           {/* Recipe Description */}
-          {(recipeDetails?.description || meal.recipeDescription) && (
+          {(recipeDetails?.description || updatedMeal.recipeDescription) && (
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Clock className="h-5 w-5 text-aleen-primary" />
@@ -84,7 +97,7 @@ export function MealDetailModal({ meal, onClose, onMarkConsumed }: MealDetailMod
               </div>
               <div className="p-4 bg-gradient-to-r from-aleen-light/50 to-white rounded-2xl border border-aleen-primary/10">
                 <p className="text-gray-700 leading-relaxed">
-                  {recipeDetails?.description || meal.recipeDescription}
+                  {recipeDetails?.description || updatedMeal.recipeDescription}
                 </p>
               </div>
             </div>
@@ -152,12 +165,22 @@ export function MealDetailModal({ meal, onClose, onMarkConsumed }: MealDetailMod
             >
               Fechar
             </Button>
-            <Button 
-              onClick={() => onMarkConsumed?.(meal)}
-              className="flex-1 bg-gradient-to-r from-aleen-primary to-aleen-secondary hover:from-aleen-secondary hover:to-aleen-primary text-white font-semibold rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              Marcar como Consumido
-            </Button>
+            {updatedMeal.isConsumed ? (
+              <Button 
+                onClick={() => onMarkConsumed?.(updatedMeal)}
+                className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+              >
+                <span>✓</span>
+                <span>Consumido</span>
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => onMarkConsumed?.(updatedMeal)}
+                className="flex-1 bg-gradient-to-r from-aleen-primary to-aleen-secondary hover:from-aleen-secondary hover:to-aleen-primary text-white font-semibold rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl"
+              >
+                Marcar como Consumido
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -4,7 +4,14 @@ import { useNutrition } from "@/hooks/nutrition/useNutrition"
 import { MealPlan } from "@/types/dashboard"
 
 export function useMealPlan() {
-  const { todayMeals, dailyNutrition, loading, error, hasNoMealPlan } = useNutrition()
+  const { 
+    todayMeals, 
+    dailyNutrition, 
+    loading, 
+    error, 
+    hasNoMealPlan,
+    handleConsumptionToggle 
+  } = useNutrition()
 
   // Fallback weekly meal plan for the modal (this will remain static until we implement weekly view)
   const weeklyMealPlan: MealPlan = {
@@ -227,5 +234,6 @@ export function useMealPlan() {
     loading,
     error,
     hasNoMealPlan,
+    handleConsumptionToggle,
   }
 }

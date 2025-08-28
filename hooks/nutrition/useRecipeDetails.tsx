@@ -36,8 +36,12 @@ export function useRecipeDetails(recipeId: string | null) {
     if (!recipeId) {
       setData(null)
       setLoading(false)
+      setError(null)
       return
     }
+
+    // Prevent duplicate fetches
+    let isCancelled = false
 
     async function fetchRecipeDetails() {
       try {
@@ -54,6 +58,8 @@ export function useRecipeDetails(recipeId: string | null) {
           .select('id, name, description, image_url')
           .eq('id', recipeId!)
           .single()
+
+        if (isCancelled) return
 
         if (recipeError || !recipe) {
           console.error('❌ useRecipeDetails: Error fetching recipe:', recipeError)
@@ -79,6 +85,8 @@ export function useRecipeDetails(recipeId: string | null) {
             )
           `)
           .eq('recipe_id', recipeId!)
+
+        if (isCancelled) return
 
         if (ingredientsError) {
           console.error('❌ useRecipeDetails: Error fetching ingredients:', ingredientsError)
@@ -128,11 +136,14 @@ export function useRecipeDetails(recipeId: string | null) {
           }
         }
 
+        if (isCancelled) return
+
         console.log('🎉 useRecipeDetails: Recipe details complete with nutrition:', recipeDetails.nutrition)
         setData(recipeDetails)
         setLoading(false)
 
       } catch (error) {
+        if (isCancelled) return
         console.error('💥 useRecipeDetails: Unexpected error:', error)
         setError('Erro interno')
         setLoading(false)
@@ -140,6 +151,10 @@ export function useRecipeDetails(recipeId: string | null) {
     }
 
     fetchRecipeDetails()
+
+    return () => {
+      isCancelled = true
+    }
   }, [recipeId])
 
   return { data, loading, error }

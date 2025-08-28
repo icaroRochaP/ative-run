@@ -19,6 +19,7 @@ export function NutricaoTab({
   todayMeals,
   onMealSelect,
   onShowWeeklyPlan,
+  onConsumptionToggle,
   loading = false,
   error = null,
   hasNoMealPlan = false,
@@ -138,6 +139,7 @@ export function NutricaoTab({
               key={index}
               meal={meal}
               onClick={onMealSelect}
+              onConsumptionToggle={onConsumptionToggle}
             />
           ))}
           <Button

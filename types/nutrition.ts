@@ -93,3 +93,97 @@ export interface RecipeWithNutritionResponse {
   data?: Recipe & { nutrition: RecipeNutrition; ingredients: Array<RecipeIngredient & { food: Food }> }
   error?: string
 }
+
+// Consumption API Types
+export interface ConsumeRequest {
+  recipeId: string
+  consumedAt?: string // Default: today
+}
+
+export interface ConsumeResponse {
+  success: boolean
+  logId?: string
+  consumedAt: string
+  message?: string
+}
+
+export interface UnconsumeRequest {
+  recipeId: string
+  consumedAt?: string // Default: today
+}
+
+export interface UnconsumeResponse {
+  success: boolean
+  removed: boolean
+}
+
+export interface ConsumptionStatusRequest {
+  date?: string // Default: today
+}
+
+export interface ConsumptionStatusResponse {
+  success: boolean
+  consumedRecipes: Array<{
+    recipeId: string
+    logId: string
+    consumedAt: string
+  }>
+  error?: string
+}
+
+// Meal Consumption Status for UI
+export interface MealConsumptionStatus {
+  isConsumed: boolean
+  consumedAt?: Date
+  logId?: string
+}
+
+// Weekly Meal Plan Types - New Implementation
+export interface WeeklyMealPlan {
+  userId: string
+  planId: string
+  planName: string
+  days: {
+    [key: string]: DayMealPlan // 'monday', 'tuesday', etc.
+  }
+}
+
+export interface DayMealPlan {
+  dayName: string
+  dayOfWeek: string // 'segunda-feira', 'terça-feira'
+  totalCalories: number
+  totalProtein: number
+  totalCarbs: number
+  totalFat: number
+  meals: MealPlan[]
+}
+
+export interface MealPlan {
+  id: string
+  mealType: string // 'Café da Manhã', 'Almoço', etc.
+  recipe: {
+    id: string
+    name: string
+    description?: string
+  }
+  nutrition: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+  }
+  displayOrder: number
+  isConsumed?: boolean
+}
+
+// API Response types for Weekly Plan
+export interface WeeklyPlanResponse {
+  success: boolean
+  data?: WeeklyMealPlan
+  error?: string
+  meta?: {
+    totalDays: number
+    totalMeals: number
+    avgCaloriesPerDay: number
+  }
+}

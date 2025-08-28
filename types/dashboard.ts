@@ -63,6 +63,9 @@ export interface Meal {
   recipeName?: string
   recipeDescription?: string
   recipeImageUrl?: string
+  // Consumption tracking
+  isConsumed?: boolean
+  isConsumptionLoading?: boolean
 }
 
 export interface DayMealPlan {
@@ -113,6 +116,7 @@ export interface ProgressPhotoCardProps {
 export interface MealCardProps {
   meal: Meal
   onClick?: (meal: Meal) => void
+  onConsumptionToggle?: (meal: Meal) => void
 }
 
 export interface MacroGoalsCardProps {
@@ -195,6 +199,7 @@ export interface NutricaoTabProps {
   todayMeals: Meal[]
   onMealSelect: (meal: Meal) => void
   onShowWeeklyPlan: () => void
+  onConsumptionToggle?: (meal: Meal) => void
   loading?: boolean
   error?: string | null
   hasNoMealPlan?: boolean

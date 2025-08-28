@@ -76,6 +76,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     loading: nutritionLoading,
     error: nutritionError,
     hasNoMealPlan,
+    handleConsumptionToggle,
   } = useMealPlan()
 
   // Activity stats (could be moved to a separate hook)
@@ -174,6 +175,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
               todayMeals={todayMeals}
               onMealSelect={setSelectedMeal}
               onShowWeeklyPlan={() => setShowWeeklyPlan(true)}
+              onConsumptionToggle={handleConsumptionToggle}
               loading={nutritionLoading}
               error={nutritionError}
               hasNoMealPlan={hasNoMealPlan}
@@ -200,13 +202,14 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           <WeeklyMealPlanModal
             isOpen={showWeeklyPlan}
             onClose={() => setShowWeeklyPlan(false)}
-            mealPlan={weeklyMealPlan}
             onMealSelect={setSelectedMeal}
+            userId={profile?.id || ''}
           />
 
           <MealDetailModal
             meal={selectedMeal}
             onClose={() => setSelectedMeal(null)}
+            onMarkConsumed={handleConsumptionToggle}
           />
 
           <ProfileModal
