@@ -192,6 +192,7 @@ export interface ProgressoTabProps {
 }
 
 export interface NutricaoTabProps {
+  userId: string
   dailyCalories: number
   protein: number
   carbs: number

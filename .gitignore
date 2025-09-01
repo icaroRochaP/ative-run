@@ -31,10 +31,6 @@ next-env.d.ts
 # VSCode settings
 .vscode/
 
-# local BMAD and cursor folders + agents
-.bmad-core/
-.cursor/
-agents/
 # Playwright MCP files
 .playwright-mcp/
 

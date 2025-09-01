@@ -168,6 +168,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
 
           <TabsContent value="nutrition" className="space-y-6">
             <NutricaoTab
+              userId={profile?.id || ''}
               dailyCalories={dailyNutrition.calories}
               protein={dailyNutrition.protein}
               carbs={dailyNutrition.carbs}

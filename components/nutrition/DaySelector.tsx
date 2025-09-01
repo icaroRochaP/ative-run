@@ -27,7 +27,7 @@ export function DaySelector({
   className 
 }: DaySelectorProps) {
   return (
-    <div className={cn("flex flex-wrap justify-center items-center gap-2 px-4 py-4", className)}>
+    <div className={cn("flex flex-wrap justify-center items-center gap-3 px-2 py-2", className)}>
       {availableDays.map((day) => (
         <Button
           key={day}
@@ -35,10 +35,10 @@ export function DaySelector({
           size="sm"
           onClick={() => onDaySelect(day)}
           className={cn(
-            "text-sm font-medium cursor-pointer transition-all duration-200 whitespace-nowrap rounded-3xl px-4 py-2 flex-shrink-0",
+            "text-sm font-semibold cursor-pointer transition-all duration-300 whitespace-nowrap rounded-2xl px-4 py-2.5 flex-shrink-0 shadow-md",
             selectedDay === day
-              ? "bg-aleen-primary border-aleen-primary text-white hover:bg-aleen-primary/90"
-              : "bg-slate-50 border-2 border-slate-200 text-slate-700 hover:border-aleen-primary hover:bg-aleen-primary/10"
+              ? "bg-gradient-to-r from-aleen-primary to-aleen-secondary border-0 text-white hover:from-aleen-secondary hover:to-aleen-primary shadow-lg"
+              : "bg-white border-2 border-aleen-light text-gray-700 hover:border-aleen-primary hover:bg-aleen-primary/10 hover:shadow-lg hover:scale-105"
           )}
         >
           {dayLabels[day] || day}
