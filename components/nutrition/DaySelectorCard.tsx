@@ -9,13 +9,15 @@ interface DaySelectorCardProps {
   onDaySelect: (day: string) => void
   availableDays: string[]
   className?: string
+  isLoading?: boolean
 }
 
 export function DaySelectorCard({ 
   selectedDay, 
   onDaySelect, 
   availableDays,
-  className 
+  className,
+  isLoading = false
 }: DaySelectorCardProps) {
   return (
     <Card className={`bg-gradient-to-br from-aleen-light to-white border-0 shadow-2xl rounded-3xl overflow-hidden ${className}`}>
@@ -31,6 +33,7 @@ export function DaySelectorCard({
           onDaySelect={onDaySelect}
           availableDays={availableDays}
           className="px-0"
+          isLoading={isLoading}
         />
       </CardContent>
     </Card>

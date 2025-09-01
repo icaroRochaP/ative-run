@@ -103,12 +103,16 @@ export function NutricaoTab({
     meals: todayMeals || []
   }
 
-  // Obter dias disponíveis para o selector
-  const availableDays = weeklyPlan ? Object.keys(weeklyPlan.days) : []
+  // Obter dias disponíveis para o selector - sempre mostrar dias padrão durante carregamento
+  const defaultDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  const availableDays = weeklyPlan ? Object.keys(weeklyPlan.days) : defaultDays
 
   // Handler para seleção de dia
   const handleDaySelect = (day: string) => {
-    setSelectedDay(day)
+    // Só permitir seleção se os dados estiverem carregados
+    if (weeklyPlan && Object.keys(weeklyPlan.days).includes(day)) {
+      setSelectedDay(day)
+    }
   }
 
   // Handler para abrir plano semanal
@@ -121,14 +125,13 @@ export function NutricaoTab({
   if (loading || weeklyPlanLoading) {
     return (
       <div className="space-y-6">
-        {/* Day Selector Card */}
-        {availableDays.length > 0 && (
-          <DaySelectorCard
-            selectedDay={selectedDay}
-            onDaySelect={handleDaySelect}
-            availableDays={availableDays}
-          />
-        )}
+        {/* Day Selector Card - sempre visível */}
+        <DaySelectorCard
+          selectedDay={selectedDay || getCurrentDay()}
+          onDaySelect={handleDaySelect}
+          availableDays={availableDays}
+          isLoading={true}
+        />
 
         {/* Daily Macro Goals */}
         <MacroGoalsCard
@@ -158,14 +161,13 @@ export function NutricaoTab({
   if (error || weeklyPlanError) {
     return (
       <div className="space-y-6">
-        {/* Day Selector Card */}
-        {availableDays.length > 0 && (
-          <DaySelectorCard
-            selectedDay={selectedDay}
-            onDaySelect={handleDaySelect}
-            availableDays={availableDays}
-          />
-        )}
+        {/* Day Selector Card - sempre visível */}
+        <DaySelectorCard
+          selectedDay={selectedDay || getCurrentDay()}
+          onDaySelect={handleDaySelect}
+          availableDays={availableDays}
+          isLoading={false}
+        />
 
         {/* Daily Macro Goals */}
         <MacroGoalsCard
@@ -237,14 +239,13 @@ export function NutricaoTab({
   // Success state with meals
   return (
     <div className="space-y-6">
-      {/* Day Selector Card */}
-      {availableDays.length > 0 && (
-        <DaySelectorCard
-          selectedDay={selectedDay}
-          onDaySelect={handleDaySelect}
-          availableDays={availableDays}
-        />
-      )}
+      {/* Day Selector Card - sempre visível */}
+      <DaySelectorCard
+        selectedDay={selectedDay || getCurrentDay()}
+        onDaySelect={handleDaySelect}
+        availableDays={availableDays}
+        isLoading={false}
+      />
 
       {/* Daily Macro Goals */}
       <MacroGoalsCard
@@ -262,7 +263,7 @@ export function NutricaoTab({
           </h2>
           {displayData.meals.map((meal, index) => (
             <MealCard
-              key={('recipeId' in meal && meal.recipeId) || index}
+              key={`meal-${('recipeId' in meal && meal.recipeId) || 'unknown'}-${index}`}
               meal={meal}
               onClick={onMealSelect}
               onConsumptionToggle={onConsumptionToggle}
