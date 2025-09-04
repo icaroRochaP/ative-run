@@ -4,7 +4,6 @@ import Image from "next/image"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DashboardOverview } from "@/components/admin/dashboard/DashboardOverview"
 import { UsersTable } from "@/components/admin/users/UsersTable"
-import { AgentsTable } from "@/components/admin/agents/AgentsTable"
 import { AdminHeader } from "@/components/admin/AdminHeader"
 import { useState } from "react"
 
@@ -48,7 +47,10 @@ export function AdminLayout() {
           </TabsContent>
 
           <TabsContent value="agents" className="space-y-6">
-            <AgentsTable />
+            <div className="bg-white rounded-2xl p-6 shadow-xl border-0">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">AI Agents</h3>
+              <p className="text-gray-600">Em desenvolvimento...</p>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
