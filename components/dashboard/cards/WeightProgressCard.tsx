@@ -1,24 +1,59 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Target, Zap } from "lucide-react"
+import { Target, Zap, Edit } from "lucide-react"
 import { WeightProgressCardProps } from "@/types/dashboard"
 
 export function WeightProgressCard({ 
   currentWeight, 
   targetWeight, 
   startWeight, 
-  onUpdateWeight 
+  onUpdateWeight,
+  onEditGoal
 }: WeightProgressCardProps) {
-  const progressPercentage = Math.round(((startWeight - currentWeight) / (startWeight - targetWeight)) * 100)
-  const remainingWeight = currentWeight - targetWeight
+  // Calcular progresso para perda de peso
+  let progressPercentage = 0
+  let remainingWeight = 0
+  
+  if (startWeight && startWeight > 0 && targetWeight > 0) {
+    // Se temos peso inicial, calcular progresso normal
+    const totalWeightToLose = startWeight - targetWeight
+    const weightLost = startWeight - currentWeight
+    progressPercentage = Math.round((weightLost / totalWeightToLose) * 100)
+    remainingWeight = currentWeight - targetWeight
+  } else if (currentWeight > 0 && targetWeight > 0) {
+    // Se não temos peso inicial, mas temos peso atual e meta
+    if (currentWeight <= targetWeight) {
+      // Meta atingida
+      progressPercentage = 100
+      remainingWeight = 0
+    } else {
+      // Ainda não atingiu a meta - calcular quanto falta
+      remainingWeight = currentWeight - targetWeight
+      // Para mostrar progresso, vamos assumir que precisa perder pelo menos 10% do peso atual
+      const estimatedStartWeight = currentWeight * 1.1
+      const totalWeightToLose = estimatedStartWeight - targetWeight
+      const weightLost = estimatedStartWeight - currentWeight
+      progressPercentage = Math.round((weightLost / totalWeightToLose) * 100)
+    }
+  }
 
   return (
     <Card className="bg-white border-0 shadow-2xl rounded-3xl overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-aleen-primary to-aleen-secondary text-white rounded-t-3xl">
-        <CardTitle className="text-white flex items-center">
-          <Target className="mr-2 h-5 w-5" />
-          Progresso do Peso
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white flex items-center">
+            <Target className="mr-2 h-5 w-5" />
+            Progresso do Peso
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEditGoal}
+            className="text-white hover:bg-white/20 rounded-xl"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6 p-6">
         {/* Current Weight Display */}

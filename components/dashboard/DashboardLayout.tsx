@@ -13,7 +13,8 @@ import { ProfileModal } from "@/components/dashboard/modals/ProfileModal"
 import { PasswordChangeModal } from "@/components/password-change-modal"
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton"
 import { useDashboardData } from "@/hooks/dashboard/useDashboardData"
-import { useWeightTracking } from "@/hooks/dashboard/useWeightTracking"
+import { useWeightProgress, useProgressPhotos } from '@/hooks/useWeightProgress'
+import { useWeightGoals } from '@/hooks/useWeightGoals'
 import { useMealPlan } from "@/hooks/dashboard/useMealPlan"
 import { useTrainingStats } from "@/hooks/training/useTrainingStats"
 
@@ -59,14 +60,20 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     handleClosePasswordModal,
   } = useDashboardData()
 
-  const {
-    weightUpdates,
-    progressPhotos,
-    currentWeight,
-    targetWeight,
-    startWeight,
-    handleWeightUpdate,
-  } = useWeightTracking()
+  // Weight tracking data
+  const { goal } = useWeightGoals()
+  const { data: weightData } = useWeightProgress()
+  const { photos: progressPhotos } = useProgressPhotos()
+
+  // Extract weight data from hooks
+  const currentWeight = goal?.current_weight || 0
+  const targetWeight = goal?.target_weight || 0
+  const startWeight = goal?.start_weight || 0
+  const weightUpdates = weightData?.recent_logs || []
+
+  const handleWeightUpdate = () => {
+    // This will be handled by the modal
+  }
 
   const {
     weeklyMealPlan,
@@ -155,16 +162,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           </TabsContent>
 
           <TabsContent value="progress" className="space-y-6">
-            <ProgressoTab
-              currentWeight={currentWeight}
-              targetWeight={targetWeight}
-              startWeight={startWeight}
-              weightUpdates={weightUpdates}
-              progressPhotos={progressPhotos}
-              onUpdateWeight={() => setShowWeightUpdate(true)}
-              currentWeightPage={currentWeightPage}
-              onWeightPageChange={setCurrentWeightPage}
-            />
+            <ProgressoTab />
           </TabsContent>
 
           <TabsContent value="nutrition" className="space-y-6">

@@ -3,7 +3,11 @@ import { Camera } from "lucide-react"
 import Image from "next/image"
 import { ProgressPhotoCardProps } from "@/types/dashboard"
 
-export function ProgressPhotoCard({ photos }: ProgressPhotoCardProps) {
+interface ProgressPhotoCardExtendedProps extends ProgressPhotoCardProps {
+  onPhotoClick?: (index: number) => void
+}
+
+export function ProgressPhotoCard({ photos, onPhotoClick }: ProgressPhotoCardExtendedProps) {
   return (
     <Card className="bg-white border-0 shadow-2xl rounded-3xl overflow-hidden">
       <CardHeader>
@@ -16,17 +20,25 @@ export function ProgressPhotoCard({ photos }: ProgressPhotoCardProps) {
         {photos.length > 0 ? (
           <div className="grid grid-cols-3 gap-3">
             {photos.map((photo, index) => (
-              <div key={index} className="relative">
+              <div 
+                key={index} 
+                className="relative cursor-pointer group transition-transform hover:scale-105"
+                onClick={() => onPhotoClick?.(index)}
+              >
                 <Image
                   src={photo.image || "/placeholder.svg"}
                   alt={`Progresso ${photo.date}`}
                   width={100}
                   height={133}
-                  className="rounded-2xl object-cover w-full aspect-[3/4] border-2 border-aleen-light"
+                  className="rounded-2xl object-cover w-full aspect-[3/4] border-2 border-aleen-light group-hover:border-aleen-primary transition-colors"
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-2 rounded-b-2xl">
                   <div className="font-medium">{photo.date}</div>
                   {photo.weight && <div className="text-aleen-light">{photo.weight} kg</div>}
+                </div>
+                {/* Overlay de hover */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-2xl flex items-center justify-center">
+                  <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
             ))}

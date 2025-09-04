@@ -107,6 +107,7 @@ export interface WeightProgressCardProps {
   targetWeight: number
   startWeight: number
   onUpdateWeight: () => void
+  onEditGoal: () => void
 }
 
 export interface ProgressPhotoCardProps {
