@@ -4,7 +4,6 @@ import Image from "next/image"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DashboardOverview } from "@/components/admin/dashboard/DashboardOverview"
 import { UsersTable } from "@/components/admin/users/UsersTable"
-import { AgentsTable } from "@/components/admin/agents/AgentsTable"
 import { AdminHeader } from "@/components/admin/AdminHeader"
 import { useState } from "react"
 
