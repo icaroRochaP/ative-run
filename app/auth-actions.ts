@@ -11,62 +11,76 @@ type UserInsert = Database["public"]["Tables"]["users"]["Insert"]
 type User = Database["public"]["Tables"]["users"]["Row"]
 
 export async function signUpAndCreateProfile(email: string, onboardingData: Record<string, any>, password?: string) {
+  // Environment variables check
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error("Supabase environment variables are not configured on the server.")
+    console.error("❌ Server Action: Missing Supabase environment variables")
+    return { error: "Supabase environment variables are not configured on the server." }
   }
 
-  const supabaseAnon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("❌ Server Action: Missing SUPABASE_SERVICE_ROLE_KEY")
+    return { error: "Database error saving new user" }
+  }
 
   console.log("👤 Server Action: Attempting to create auth user with email:", email)
   console.log("📋 Server Action: Onboarding data for auth user creation:", onboardingData)
 
-  const { data, error: signUpError } = await supabaseAnon.auth.signUp({
-    email: email,
-    password: password || Math.random().toString(36).slice(-12) + "Aa1!", // Usar senha fornecida ou gerar uma temporária
-    options: {
-      data: {
+  // Try using admin client directly for auth creation
+  try {
+    const supabaseAdmin = createAdminClient()
+    
+    console.log("👤 Server Action: Using admin client to create auth user...")
+    const { data, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      password: password || Math.random().toString(36).slice(-12) + "Aa1!",
+      user_metadata: {
         name: onboardingData.name,
         age: onboardingData.age,
         gender: onboardingData.gender,
       },
-    },
-  })
+      email_confirm: true, // Auto-confirm email to avoid confirmation issues
+    })
 
-  if (signUpError) {
-    console.error("❌ Server Action: Error creating auth user:", signUpError)
-    return { error: signUpError.message } // Retorna o erro para o useActionState
-  }
+    if (signUpError) {
+      console.error("❌ Server Action: Error creating auth user with admin:", signUpError)
+      console.error("❌ Server Action: Error details:", JSON.stringify(signUpError, null, 2))
+      return { error: `Auth error: ${signUpError.message}` }
+    }
 
-  if (!data.user) {
-    return { error: "Server Action: User data not returned after sign up." }
-  }
+    if (!data.user) {
+      return { error: "Server Action: User data not returned after sign up." }
+    }
 
-  const profileData: UserInsert = {
-    id: data.user.id,
-    name: onboardingData.name || "",
-    phone: onboardingData.phone || "",
-    nickname: onboardingData.nickname || "",
-    email: email,
-    onboarding: false, // Initialize onboarding as false for new users
-  }
+    console.log("✅ Server Action: Auth user created successfully with admin client:", data.user.id)
 
-  try {
-    const supabaseAdmin = createAdminClient()
+    const profileData: UserInsert = {
+      id: data.user.id,
+      name: onboardingData.name || "",
+      phone: onboardingData.phone || "",
+      nickname: onboardingData.nickname || "",
+      email: email,
+      onboarding: false, // Initialize onboarding as false for new users
+    }
+
     console.log("👤 Server Action: Attempting to insert user profile using admin client for ID:", profileData.id)
+    console.log("👤 Server Action: Profile data:", profileData)
 
-    const { error: profileError } = await supabaseAdmin.from("users").upsert(profileData, { onConflict: "id" })
+    const { data: insertData, error: profileError } = await supabaseAdmin.from("users").upsert(profileData, { onConflict: "id" })
 
     if (profileError) {
       console.error("❌ Server Action: Error creating user profile with admin client:", profileError)
-      return { error: profileError.message }
+      console.error("❌ Server Action: Error details:", JSON.stringify(profileError, null, 2))
+      return { error: `Database error saving new user: ${profileError.message}` }
     }
     console.log("✅ Server Action: User profile created successfully with admin client for ID:", data.user.id)
-  } catch (adminClientError: any) {
-    console.error("❌ Server Action: Error using admin client for profile creation:", adminClientError)
-    return { error: adminClientError.message }
-  }
+    console.log("✅ Server Action: Insert data:", insertData)
 
-  return { data, error: null }
+    return { data, error: null }
+  } catch (error: any) {
+    console.error("❌ Server Action: Error in signUpAndCreateProfile:", error)
+    console.error("❌ Server Action: Error details:", JSON.stringify(error, null, 2))
+    return { error: `Database error saving new user: ${error.message}` }
+  }
 }
 
 export async function saveOnboardingResponses(
@@ -156,14 +170,12 @@ export async function saveIndividualOnboardingResponseAndProfile(
     console.log("✅ Server Action: Individual response saved successfully with admin client.")
 
     // 2. Update user profile if it's a relevant field
-    const profileFields = ["name", "age", "gender", "weight", "height", "email", "primaryGoal"]
+    const profileFields = ["name", "gender", "weight", "height", "email", "primaryGoal"]
 
     if (profileFields.includes(fieldName)) {
       const updateData: any = {}
 
-      if (fieldName === "age" && value) {
-        updateData.age = Number.parseInt(value as string)
-      } else if (fieldName === "primaryGoal") {
+      if (fieldName === "primaryGoal") {
         updateData.primary_goal = value
       } else if (fieldName === "email") {
         updateData.email = value

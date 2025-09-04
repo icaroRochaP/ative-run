@@ -107,8 +107,20 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
         return null
       }
 
-      // 2. Buscar a última pergunta respondida (pela completed_at mais recente)
-      const lastResponse = responses[0] // Já ordenado por completed_at desc
+      // 2. Buscar a pergunta com maior step_number respondida (última por ordem lógica)
+      let lastResponse = responses[0] // Pegar a primeira por timestamp como fallback
+      let highestStepNumber = -1
+      
+      // Encontrar a resposta com maior step_number
+      responses.forEach(response => {
+        const questionData = response.onboarding_questions as any
+        const stepNumber = questionData?.step_number || 0
+        if (stepNumber > highestStepNumber) {
+          highestStepNumber = stepNumber
+          lastResponse = response
+        }
+      })
+      
       console.log("📍 Last answered question_id:", lastResponse.question_id)
       console.log("📝 Last answered question details:", lastResponse.onboarding_questions)
 
@@ -148,6 +160,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
   const [visibleQuestions, setVisibleQuestions] = useState<OnboardingQuestion[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [justCreatedAccount, setJustCreatedAccount] = useState(false) // Track if account was just created
   const [userCreated, setUserCreated] = useState(false)
   const [questionsLoaded, setQuestionsLoaded] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -236,6 +249,7 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
               })
               
               setCurrentUser(tempUser)
+              setUserCreated(true) // ✅ CORREÇÃO: Marcar usuário como criado quando há progresso
               
               // Convert responses to the format expected by the component
               const progressResponses: Record<string, any> = {}
@@ -270,6 +284,20 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                   // Se chegou ao final, todas as perguntas foram respondidas
                   if (i === qs.length - 1) {
                     nextStepIndex = qs.length
+                  }
+                }
+                
+                // CORREÇÃO: Se o usuário acabou de criar a conta (última pergunta foi email),
+                // garantir que vai para a próxima pergunta correta
+                if (userProgress.lastQuestionFieldName === 'email') {
+                  console.log("🎯 User just created account, ensuring correct next step")
+                  // Procurar pela pergunta com step_number imediatamente após o email
+                  for (let i = 0; i < qs.length; i++) {
+                    if (qs[i].step_number === userProgress.lastQuestionOrder + 1) {
+                      nextStepIndex = i
+                      console.log("✅ Found next question after email:", qs[i].field_name, "at index:", i)
+                      break
+                    }
                   }
                 }
               } else {
@@ -626,11 +654,32 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
   }
 
   const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1)
+    // Se o usuário já foi criado (tem UUID na URL), não pode voltar para perguntas críticas
+    if (userIdFromPath && currentUser) {
+      const currentQuestion = visibleQuestions[currentStep]
+      const criticalQuestions = ['name', 'age', 'email'] // Perguntas que não podem ser revisitadas
+      
+      // Encontrar o step da primeira pergunta não-crítica
+      let minAllowedStep = 0
+      for (let i = 0; i < visibleQuestions.length; i++) {
+        if (!criticalQuestions.includes(visibleQuestions[i].field_name)) {
+          minAllowedStep = i
+          break
+        }
+      }
+      
+      if (currentStep > minAllowedStep) {
+        setCurrentStep((prev) => prev - 1)
+      }
+      // Se já está no step mínimo permitido, não faz nada (não volta)
     } else {
-      // Se estiver no primeiro step, volta para a tela de boas-vindas
-      setIsStarted(false)
+      // Lógica original para usuários não criados
+      if (currentStep > 0) {
+        setCurrentStep((prev) => prev - 1)
+      } else {
+        // Se estiver no primeiro step, volta para a tela de boas-vindas
+        setIsStarted(false)
+      }
     }
   }
 
@@ -810,42 +859,20 @@ export default function OnboardingPage({ userIdFromPath }: { userIdFromPath?: st
                 <Label htmlFor="phone" className="text-black font-medium">
                   Phone number
                 </Label>
-                <div className="relative">
-                  <PhoneInput
-                    international
-                    countryCallingCodeEditable={false}
-                    defaultCountry="BR"
-                    value={responses.phone || ""}
-                    onChange={(value) => updateResponse("phone", value || "")}
-                    className={`w-full border-2 ${errors.phone ? "border-red-500" : "border-aleen-light"} rounded-2xl focus:border-aleen-primary text-black bg-white overflow-hidden`}
-                    style={{
-                      '--PhoneInputCountryFlag-height': '1.2em',
-                      '--PhoneInputCountryFlag-borderRadius': '50%', // Bandeira redonda
-                      '--PhoneInputCountryFlag-borderColor': 'transparent',
-                      '--PhoneInputCountrySelectArrow-color': '#6b7280',
-                      '--PhoneInput-color--focus': '#000000',
-                    } as any}
-                    inputComponent={({ className, ...props }) => (
-                      <Input
-                        {...props}
-                        className="border-0 bg-transparent focus:ring-0 focus:border-0 pl-12 py-3 rounded-2xl"
-                        style={{ outline: 'none', boxShadow: 'none' }}
-                      />
-                    )}
-                    flagComponent={({ country, flagUrl, ...props }) => (
-                      <div 
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full overflow-hidden border border-gray-200"
-                        {...props}
-                      >
-                        <img 
-                          src={flagUrl} 
-                          alt={`${country} flag`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                  />
-                </div>
+                <PhoneInput
+                  international
+                  countryCallingCodeEditable={false}
+                  defaultCountry="BR"
+                  value={responses.phone || ""}
+                  onChange={(value) => updateResponse("phone", value || "")}
+                  className={`w-full border-2 ${errors.phone ? "border-red-500" : "border-aleen-light"} focus:border-aleen-primary rounded-2xl text-black bg-white py-3 px-4`}
+                  style={{
+                    '--PhoneInputCountryFlag-height': '1.2em',
+                    '--PhoneInputCountryFlag-borderRadius': '4px',
+                    '--PhoneInputCountrySelectArrow-color': '#6b7280',
+                    '--PhoneInput-color--focus': '#000000',
+                  } as React.CSSProperties}
+                />
                 {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
               </div>
               

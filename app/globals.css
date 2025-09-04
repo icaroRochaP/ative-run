@@ -90,3 +90,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* PhoneInput custom styles */
+.PhoneInput {
+  position: relative;
+}
+
+.PhoneInputCountrySelect {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.PhoneInputCountrySelectArrow {
+  display: none;
+}
+
+.PhoneInputCountryFlag {
+  width: 20px;
+  height: 15px;
+  border-radius: 2px;
+  margin-right: 8px;
+}
+
+.PhoneInputInput {
+  padding-left: 50px !important;
+}
