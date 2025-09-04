@@ -80,11 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userProfile = await getUserProfileClient(initialUser.id)
             if (!isCancelled) {
               setProfile(userProfile as UserProfile)
-              console.log("✅ AuthProvider: Profile loaded", { userId: userProfile.id })
+              console.log("✅ AuthProvider: Profile loaded", { userId: userProfile?.id || 'unknown' })
             }
           } catch (error) {
             console.error("❌ AuthProvider: Error fetching user profile:", error)
+            // Adicionar mensagem detalhada de erro para depuração
+            console.log("DEBUG: Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL || "not set")
+            console.log("DEBUG: User ID:", initialUser?.id || "not set")
+            
             if (!isCancelled) {
+              // Não interromper o fluxo em caso de erro ao buscar perfil
+              // Em desenvolvimento, podemos continuar com perfil nulo
               setProfile(null)
             }
           }

@@ -15,6 +15,10 @@ const config: Config = {
       fontFamily: {
         sans: ["Plus Jakarta Sans", "sans-serif"],
       },
+      screens: {
+        'xs': '375px',
+        'xxs': '320px',
+      },
   		colors: {
         // Aleen.ai Brand Colors
         aleen: {

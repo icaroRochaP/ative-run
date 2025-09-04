@@ -147,7 +147,7 @@ export function ProfileModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-300"
+      className="modal-overlay-full bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300"
       onClick={handleBackdropClick}
     >
       <Card className="w-full max-w-sm bg-white border-0 shadow-2xl rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300">
