@@ -29,7 +29,7 @@ export function WeightUpdateModal({ isOpen, onClose, onSave }: WeightUpdateModal
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-50 overflow-y-auto">
+    <div className="modal-overlay-full bg-black/50 flex items-start justify-center p-4 z-50 overflow-y-auto">
       <Card className="w-full max-w-md bg-white border-0 shadow-2xl rounded-3xl my-8">
         <CardHeader className="bg-gradient-to-r from-aleen-primary to-aleen-secondary text-white rounded-t-3xl">
           <div className="flex items-center justify-between">

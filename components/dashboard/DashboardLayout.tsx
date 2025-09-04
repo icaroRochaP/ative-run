@@ -6,8 +6,6 @@ import { ResumoTab } from "@/components/dashboard/tabs/ResumoTab"
 import { TreinoTab } from "@/components/dashboard/tabs/TreinoTab"
 import { ProgressoTab } from "@/components/dashboard/tabs/ProgressoTab"
 import { NutricaoTab } from "@/components/dashboard/tabs/NutricaoTab"
-import { WorkoutDetailModal } from "@/components/dashboard/modals/WorkoutDetailModal"
-import { WorkoutHistoryModal } from "@/components/dashboard/modals/WorkoutHistoryModal"
 import { WeightUpdateModal } from "@/components/dashboard/modals/WeightUpdateModal"
 import { WeeklyMealPlanModal } from "@/components/dashboard/modals/WeeklyMealPlanModal"
 import { MealDetailModal } from "@/components/dashboard/modals/MealDetailModal"
@@ -17,6 +15,7 @@ import { FloatingActionButton } from "@/components/dashboard/FloatingActionButto
 import { useDashboardData } from "@/hooks/dashboard/useDashboardData"
 import { useWeightTracking } from "@/hooks/dashboard/useWeightTracking"
 import { useMealPlan } from "@/hooks/dashboard/useMealPlan"
+import { useTrainingStats } from "@/hooks/training/useTrainingStats"
 
 interface DashboardLayoutProps {
   // Add any additional props if needed
@@ -79,9 +78,16 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     handleConsumptionToggle,
   } = useMealPlan()
 
-  // Activity stats (could be moved to a separate hook)
-  const workoutsThisMonth = 12
-  const streakDays = 7
+  const {
+    workoutsThisMonth,
+    streakDays,
+    loading: statsLoading,
+    error: statsError
+  } = useTrainingStats(profile?.id || '')
+
+  // Activity stats fallback values if there's an error
+  const finalWorkoutsThisMonth = statsError ? 0 : workoutsThisMonth
+  const finalStreakDays = statsError ? 0 : streakDays
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-aleen-light to-white">
@@ -136,20 +142,15 @@ export function DashboardLayout(props: DashboardLayoutProps) {
               nameLoading={nameLoading}
               userData={userData}
               profile={profile}
-              workoutsThisMonth={workoutsThisMonth}
-              streakDays={streakDays}
+              workoutsThisMonth={finalWorkoutsThisMonth}
+              streakDays={finalStreakDays}
               onProfileClick={handleOpenProfileModal}
             />
           </TabsContent>
 
           <TabsContent value="training" className="space-y-6">
             <TreinoTab
-              workouts={workouts}
-              workoutHistory={workoutHistory}
-              onWorkoutSelect={setSelectedWorkout}
-              onHistoryWorkoutSelect={setSelectedHistoryWorkout}
-              currentHistoryPage={currentHistoryPage}
-              onHistoryPageChange={setCurrentHistoryPage}
+              userId={profile?.id || ''}
             />
           </TabsContent>
 
@@ -184,16 +185,6 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           </TabsContent>
 
           {/* Modals */}
-          <WorkoutDetailModal
-            workout={selectedWorkout}
-            onClose={() => setSelectedWorkout(null)}
-          />
-
-          <WorkoutHistoryModal
-            workout={selectedHistoryWorkout}
-            onClose={() => setSelectedHistoryWorkout(null)}
-          />
-
           <WeightUpdateModal
             isOpen={showWeightUpdate}
             onClose={() => setShowWeightUpdate(false)}
