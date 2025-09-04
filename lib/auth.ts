@@ -104,10 +104,47 @@ export const getSessionClient = async () => {
 // This might be redundant if profile is always fetched via server action or context
 export const getUserProfileClient = async (userId: string) => {
   if (!isSupabaseConfigured()) {
+    console.warn("Supabase is not configured when getting user profile")
+    // Em desenvolvimento, retornar um perfil mock para não quebrar a UI
+    if (process.env.NODE_ENV === 'development') {
+      console.log("DEV MODE: Returning mock profile for", userId)
+      return {
+        id: userId,
+        email: "dev@example.com",
+        name: "Dev User",
+        onboarding: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    }
     throw new Error("Supabase is not configured")
   }
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
-  if (error) throw error
-  return data
+  
+  try {
+    const supabase = getSupabaseClient()
+    console.log("Getting user profile for:", userId)
+    const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+    
+    if (error) {
+      console.error("Error fetching profile:", error.message, error.details)
+      throw error
+    }
+    
+    return data
+  } catch (error) {
+    console.error("Exception in getUserProfileClient:", error)
+    // Em desenvolvimento, retornar um perfil mock para não quebrar a UI
+    if (process.env.NODE_ENV === 'development') {
+      console.log("DEV MODE: Returning mock profile after error for", userId)
+      return {
+        id: userId,
+        email: "dev@example.com",
+        name: "Dev User",
+        onboarding: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    }
+    throw error
+  }
 }
