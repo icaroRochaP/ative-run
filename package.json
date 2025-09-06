@@ -7,15 +7,15 @@
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "npm@10.2.4",
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "build": "turbo build",
+    "build": "pnpm --filter=portal-web build",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
     "test": "turbo test",
     "clean": "turbo clean",
-    "start": "cd apps/portal-web && pnpm start",
+    "start": "pnpm --filter=portal-web start",
     "dev:portal": "turbo dev --filter=portal-web",
     "dev:ia": "turbo dev --filter=servico-ia",
     "build:portal": "turbo build --filter=portal-web",
