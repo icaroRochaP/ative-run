@@ -34,9 +34,8 @@ export async function GET(request: NextRequest) {
         })
 
       // Retornar o challenge para confirmar a subscription
-      return new NextResponse(hubChallenge, {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain' }
+      return NextResponse.json({ "hub.challenge": hubChallenge }, {
+        status: 200
       })
     }
 
