@@ -6,8 +6,21 @@ NEXT_TELEMETRY_DISABLED = "1"
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
-[phases.install]
-cmds = ["pnpm install --frozen-lockfile"]
+[variables]
+NODE_VERSION = "20.x"
+PNPM_VERSION = "9"
+
+[phases.setup]
+nixPkgs = ["nodejs", "pnpm"]
+
+[phases.install] 
+cmds = ["cd apps/portal-web && pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["cd apps/portal-web && pnpm run build"]
+
+[start]
+cmd = "cd apps/portal-web && pnpm start"
 
 [phases.build]
 cmds = ["pnpm run build:portal"]

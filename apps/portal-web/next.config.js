@@ -1,10 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-    // Adicionar um timestamp dinâmico que muda a cada execução para forçar novas builds
-    BUILD_TIMESTAMP: Date.now().toString(),
-  },
+  output: 'standalone',
   eslint: {
     ignoreDuringBuilds: true,
   },
