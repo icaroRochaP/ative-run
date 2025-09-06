@@ -1,7 +1,6 @@
 'use client'
 
 import React from 'react'
-import { NutricaoTab } from '@/components/dashboard/tabs/NutricaoTab'
 import { Meal } from '@/types/dashboard'
 
 const mockMeals: Meal[] = [
@@ -60,18 +59,15 @@ export default function TestNutricaoPage() {
           Teste - Navegação por Dias na Nutrição
         </h1>
         
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          <NutricaoTab
-            userId="5eb2d73e-948f-408e-b328-e210d0c85d73"
-            dailyCalories={2000}
-            protein={150}
-            carbs={250}
-            fat={67}
-            todayMeals={mockMeals}
-            onMealSelect={handleMealSelect}
-            onShowWeeklyPlan={handleShowWeeklyPlan}
-            onConsumptionToggle={handleConsumptionToggle}
-          />
+                <div className="bg-white rounded-2xl shadow-xl p-6">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Funcionalidade de Nutrição
+            </h2>
+            <p className="text-gray-600">
+              Esta funcionalidade está em desenvolvimento. Em breve você poderá gerenciar suas refeições e planos nutricionais.
+            </p>
+          </div>
         </div>
 
         <div className="mt-8 text-center text-gray-600">
