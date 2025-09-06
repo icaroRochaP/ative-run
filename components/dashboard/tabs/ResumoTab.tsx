@@ -4,6 +4,7 @@ import { CreditCard } from "lucide-react"
 import { UserHeaderCard } from "@/components/dashboard/cards/UserHeaderCard"
 import { ActivityStatsCard } from "@/components/dashboard/cards/ActivityStatsCard"
 import { QuickActionsCard } from "@/components/dashboard/cards/QuickActionsCard"
+import { StravaConnectCard } from "@/components/dashboard/strava/StravaConnectCard"
 import { ResumoTabProps } from "@/types/dashboard"
 
 export function ResumoTab({ 
@@ -40,6 +41,9 @@ export function ResumoTab({
         profile={profile}
         displayName={displayName}
       />
+
+      {/* Strava Connection */}
+      <StravaConnectCard userId={profile?.id || ''} />
 
       {/* Subscription Management */}
       <Card className="bg-white border-0 shadow-2xl rounded-3xl overflow-hidden">

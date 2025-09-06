@@ -5,16 +5,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResumoTab } from "@/components/dashboard/tabs/ResumoTab"
 import { AtividadesTab } from "@/components/dashboard/tabs/AtividadesTab"
 import { ProgressoTab } from "@/components/dashboard/tabs/MetasTab"
-import { NutricaoTab } from "@/components/dashboard/tabs/AnaliseTab"
-import { WeightUpdateModal } from "@/components/dashboard/modals/WeightUpdateModal"
+import { AnaliseTab } from "@/components/dashboard/tabs/AnaliseTab"
 import { WeeklyMealPlanModal } from "@/components/dashboard/modals/WeeklyMealPlanModal"
 import { MealDetailModal } from "@/components/dashboard/modals/MealDetailModal"
 import { ProfileModal } from "@/components/dashboard/modals/ProfileModal"
 import { PasswordChangeModal } from "@/components/password-change-modal"
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton"
 import { useDashboardData } from "@/hooks/dashboard/useDashboardData"
-import { useWeightProgress, useProgressPhotos } from '@/hooks/useWeightProgress'
-import { useWeightGoals } from '@/hooks/useWeightGoals'
 import { useMealPlan } from "@/hooks/dashboard/useMealPlan"
 import { useTrainingStats } from "@/hooks/training/useTrainingStats"
 
@@ -35,23 +32,19 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     selectedWorkout,
     selectedHistoryWorkout,
     selectedMeal,
-    showWeightUpdate,
     showWeeklyPlan,
     showProfileModal,
     showPasswordModal,
     selectedDay,
     currentHistoryPage,
-    currentWeightPage,
     profile,
     setActiveTab,
     setSelectedWorkout,
     setSelectedHistoryWorkout,
     setSelectedMeal,
-    setShowWeightUpdate,
     setShowWeeklyPlan,
     setSelectedDay,
     setCurrentHistoryPage,
-    setCurrentWeightPage,
     handleLogout,
     handleProfileUpdate,
     handleOpenProfileModal,
@@ -59,21 +52,6 @@ export function DashboardLayout(props: DashboardLayoutProps) {
     handleOpenPasswordModal,
     handleClosePasswordModal,
   } = useDashboardData()
-
-  // Weight tracking data
-  const { goal } = useWeightGoals()
-  const { data: weightData } = useWeightProgress()
-  const { photos: progressPhotos } = useProgressPhotos()
-
-  // Extract weight data from hooks
-  const currentWeight = goal?.current_weight || 0
-  const targetWeight = goal?.target_weight || 0
-  const startWeight = goal?.start_weight || 0
-  const weightUpdates = weightData?.recent_logs || []
-
-  const handleWeightUpdate = () => {
-    // This will be handled by the modal
-  }
 
   const {
     weeklyMealPlan,
@@ -119,7 +97,7 @@ export function DashboardLayout(props: DashboardLayoutProps) {
               value="summary"
               className="text-xs font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white rounded-xl transition-all duration-300"
             >
-              Resumo
+              Início
             </TabsTrigger>
             <TabsTrigger
               value="training"
@@ -143,7 +121,6 @@ export function DashboardLayout(props: DashboardLayoutProps) {
 
           <TabsContent value="summary" className="space-y-6">
             <ResumoTab
-              user={user}
               displayName={displayName}
               initials={initials}
               nameLoading={nameLoading}
@@ -166,29 +143,12 @@ export function DashboardLayout(props: DashboardLayoutProps) {
           </TabsContent>
 
           <TabsContent value="nutrition" className="space-y-6">
-            <NutricaoTab
+            <AnaliseTab
               userId={profile?.id || ''}
-              dailyCalories={dailyNutrition?.calories || 0}
-              protein={dailyNutrition?.protein || 0}
-              carbs={dailyNutrition?.carbs || 0}
-              fat={dailyNutrition?.fat || 0}
-              todayMeals={todayMeals}
-              onMealSelect={setSelectedMeal}
-              onShowWeeklyPlan={() => setShowWeeklyPlan(true)}
-              onConsumptionToggle={handleConsumptionToggle}
-              loading={nutritionLoading}
-              error={nutritionError}
-              hasNoMealPlan={hasNoMealPlan}
             />
           </TabsContent>
 
           {/* Modals */}
-          <WeightUpdateModal
-            isOpen={showWeightUpdate}
-            onClose={() => setShowWeightUpdate(false)}
-            onSave={handleWeightUpdate}
-          />
-
           <WeeklyMealPlanModal
             isOpen={showWeeklyPlan}
             onClose={() => setShowWeeklyPlan(false)}

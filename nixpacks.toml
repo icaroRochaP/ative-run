@@ -1,0 +1,21 @@
+# Nixpacks configuration for Ative Run
+[variables]
+NODE_ENV = "production"
+NEXT_TELEMETRY_DISABLED = "1"
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["pnpm run build:portal"]
+
+[start]
+cmd = "cd apps/portal-web && pnpm start"
+
+[staticAssets]
+# Serve static assets from the build
+"apps/portal-web/.next/static" = "/_next/static"
+"apps/portal-web/public" = "/"

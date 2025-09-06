@@ -15,7 +15,6 @@
     "type-check": "turbo type-check",
     "test": "turbo test",
     "clean": "turbo clean",
-    "start": "cd apps/portal-web && pnpm start",
     "dev:portal": "turbo dev --filter=portal-web",
     "dev:ia": "turbo dev --filter=servico-ia",
     "build:portal": "turbo build --filter=portal-web",
