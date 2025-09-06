@@ -6,8 +6,20 @@ NEXT_TELEMETRY_DISABLED = "1"
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
-# Use Dockerfile instead
-# This file is kept for reference but Dockerfile takes precedence
+[variables]
+NODE_VERSION = "20"
+
+[phases.setup]
+nixPkgs = ["nodejs", "npm"]
+
+[phases.install] 
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"
 
 [phases.build]
 cmds = ["pnpm run build:portal"]
